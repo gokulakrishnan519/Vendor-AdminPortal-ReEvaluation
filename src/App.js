@@ -24,6 +24,7 @@ import Prospects from "./Pages/Prospects/Prospects";
 import Parent from "./Pages/Prospects/ProspectsDetails/Parent";
 import PowerBI from "./Pages/Powerbi";
 import UserModule from "./Pages/UserModule/UserModule";
+import Revaluation from "./Pages/Revaluation/Revaluation";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
         <Route path="/VendorDetailsPage" element={<VendorDetailsPage />} />
         <Route path="/MaterialDetailsPage" element={<MaterialDetailsPage />} />
         <Route path="/Prospects" element={<Prospects />} />
+        <Route path="/Revaluation" element={<Revaluation />} />
 
         <Route path="/RFQs" element={<RFQs />} />
         <Route path="/RFQDetails" element={<RFQDetails />} />
