@@ -25,6 +25,7 @@ import Parent from "./Pages/Prospects/ProspectsDetails/Parent";
 import PowerBI from "./Pages/Powerbi";
 import UserModule from "./Pages/UserModule/UserModule";
 import Revaluation from "./Pages/Revaluation/Revaluation";
+import ParentReevaluation from "./Pages/Revaluation/RevaluationDetails/ParentReevaluation";
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
 
         <Route path="/POs" element={<POs />} />
         <Route path="/POsDetail" element={<POsDetail />} />
+        <Route path="/ParentReevaluation" element={<ParentReevaluation />} />
 
         <Route path="/UserModule" element={<UserModule />} />
         <Route path="/RFQForm" element={<RFQForm />} />

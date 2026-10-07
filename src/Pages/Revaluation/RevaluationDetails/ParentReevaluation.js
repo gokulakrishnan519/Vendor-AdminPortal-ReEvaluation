@@ -14,10 +14,10 @@ import {
 
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import Navbar from "../../../Navbars/Navbar";
-import Registration from "./Child/Registration";
+import Registration from "./Child/Overview";
 import Documents from "./Child/Documents";
 import RiskAssesment from "./Child/RiskAssesment";
-import Approvals from "./Child/Approvals";
+import RevaluationProfile from "./Child/RevaluationProfile";
 import Registrationicon from "../../../Images/Prospects/RegisterationIcon.png";
 import RegistrationiconActive from "../../../Images/Prospects/Registration Form Active.png";
 import Documentsicon from "../../../Images/Prospects/Documents Icon.png";
@@ -65,7 +65,7 @@ const theme = createTheme({
   },
 });
 
-export default function ProspectWorkspace() {
+export default function ParentReevaluation() {
   const [tab, setTab] = React.useState(0);
   const [activeTab, setActiveTab] = useState("Registration Forms");
   const [formData, setFormData] = useState({});
@@ -73,7 +73,12 @@ export default function ProspectWorkspace() {
 
   const navigate = useNavigate();
 
-  const steps = ["Registration", "Evaluation", "Approvals", "Vendor Created"];
+  const steps = [
+    "Registration",
+    "Evaluation",
+    "Revalution Profile",
+    "Vendor Created",
+  ];
 
   const tabs = [
     {
@@ -94,49 +99,12 @@ export default function ProspectWorkspace() {
       img: RiskAssesmenticon,
       activeimg: RiskAssesmenticonActive,
     },
-    ...(formData?.STATUS === "TO_EVALUATE"
-      ? []
-      : formData?.STATUS === "IN_APPROVAL"
-        ? [
-            {
-              id: 4,
-              label: "Approvals",
-              img: Approvalsicon,
-              activeimg: ApprovalsiconActive,
-            },
-          ]
-        : formData?.STATUS === "RESUBMITTED"
-          ? []
-          : formData?.STATUS === "REJECTED"
-            ? []
-            : sessionStorage.getItem("RoleName") == "Risk Assessment"
-              ? [
-                  {
-                    id: 4,
-                    label: "Approvals",
-                    img: Approvalsicon,
-                    activeimg: ApprovalsiconActive,
-                  },
-                  {
-                    id: 5,
-                    label: "Review",
-                    img: ReviewIcon,
-                    activeimg: ReviewIconActive,
-                  },
-                ]
-              : [
-                  {
-                    id: 4,
-                    label: "Approvals",
-                    img: Approvalsicon,
-                    activeimg: ApprovalsiconActive,
-                  },
-                  // {
-                  //   id: 5,
-                  //   label: "Review",
-                  //   img: Approvalsicon,
-                  // },
-                ]),
+    {
+      id: 4,
+      label: "Revalution Profile",
+      img: Approvalsicon,
+      activeimg: ApprovalsiconActive,
+    },
   ];
 
   const getProspectorData = async () => {
@@ -301,11 +269,11 @@ export default function ProspectWorkspace() {
 
       setLoading(false);
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || error.message || "Login failed";
+      // const errorMessage =
+      //   error.response?.data?.message || error.message || "Login failed";
 
-      navigate("/ErrorHandling");
-      sessionStorage.setItem("errormessge", errorMessage);
+      // navigate("/ErrorHandling");
+      // sessionStorage.setItem("errormessge", errorMessage);
       setLoading(false);
     }
   };
@@ -421,7 +389,7 @@ export default function ProspectWorkspace() {
                   <ArrowBackIosNewIcon />
                 </IconButton>
 
-                <Typography variant='h6' fontWeight={700}>
+                <Typography variant="h6" fontWeight={700}>
                   {formData?.GENERALINFORMATION?.COMPANYNAME}
                 </Typography>
               </Box>
@@ -436,8 +404,8 @@ export default function ProspectWorkspace() {
                 <Grid
                   container
                   spacing={4}
-                  justifyContent='center'
-                  alignItems='center'
+                  justifyContent="center"
+                  alignItems="center"
                 >
                   <Grid item>
                     <Typography>
@@ -472,7 +440,7 @@ export default function ProspectWorkspace() {
                     </Typography>
                   </Grid>
 
-                  <Grid item display='flex' alignItems='center'>
+                  <Grid item display="flex" alignItems="center">
                     <Typography fontWeight={600} mr={2}>
                       Status
                     </Typography>
@@ -517,14 +485,14 @@ export default function ProspectWorkspace() {
                   }}
                 >
                   <Typography
-                    align='center'
+                    align="center"
                     sx={{
                       fontWeight: 500,
                       fontSize: 18,
                       mb: 4,
                     }}
                   >
-                    Prospect Workspace
+                    Revaluation Workspace
                   </Typography>
 
                   {/* Tabs */}
@@ -576,7 +544,7 @@ export default function ProspectWorkspace() {
                               }}
                             >
                               <Box
-                                component='img'
+                                component="img"
                                 src={isActive ? tab.activeimg : tab.img}
                                 // alt={tab.label}
                                 sx={{ height: 10, objectFit: "contain" }}
@@ -616,8 +584,10 @@ export default function ProspectWorkspace() {
                       <Documents />
                     ) : activeTab == "Risk Assesment" ? (
                       <RiskAssesment getProspectorData={getProspectorData} />
-                    ) : activeTab == "Approvals" ? (
-                      <Approvals getProspectorData={getProspectorData} />
+                    ) : activeTab == "Revalution Profile" ? (
+                      <RevaluationProfile
+                        getProspectorData={getProspectorData}
+                      />
                     ) : activeTab == "Review" ? (
                       <Review getProspectorData={getProspectorData} />
                     ) : (

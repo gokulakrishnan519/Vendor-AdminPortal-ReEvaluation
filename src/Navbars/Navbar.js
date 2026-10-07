@@ -30,6 +30,8 @@ import RFQs from "../../src/Images/Navbars/RFQs.png";
 import POs from "../../src/Images/Navbars/POs.png";
 import Vendors from "../../src/Images/Navbars/Vendors.png";
 import search from "../../src/Images/Prospects/searchIcon.png";
+import revaluationactive from "../../src/Images/Revaluation/Revaluation Nav Bar Active 1.png";
+import revaluation from "../../src/Images/Revaluation/Revaluation Icon.png";
 
 import axios from "axios";
 import dayjs from "dayjs";
@@ -151,7 +153,7 @@ export default function Navbar({ children }) {
           },
           {
             text: "Revaluation",
-            activeicon: search,
+            activeicon: revaluation,
             path: "Revaluation",
             id: 7,
           },

@@ -57,6 +57,9 @@ import Approved from "../../Images/Prospects/Approved.png";
 import dayjs from "dayjs";
 import { buttonStyle } from "../../style";
 import Revaluationtop from "./Revaluationtop";
+import RevaluationSetting from "./RevaluationDetails/RevaluationSetting";
+import RequestRevaluation from "./RevaluationDetails/RequestRevaluation";
+import Settingicon from "../../Images/Revaluation/Revaluation Set up 1.png";
 
 const headerCellStyle = {
   fontSize: "12px",
@@ -81,17 +84,6 @@ const bodyCellStyle = {
   // px: "4px",
 };
 
-const bodyCellStylen = {
-  fontSize: "12px",
-  color: "#2e2e2e",
-  fontFamily: "Poppins, sans-serif",
-  paddingTop: "8px",
-  paddingBottom: "8px",
-  whiteSpace: "nowrap",
-
-  // px: "4px",
-};
-
 const textFieldStyle = {
   backgroundColor: "#Ffff",
   borderRadius: "2px",
@@ -103,109 +95,6 @@ const textFieldStyle = {
     "& fieldset": { border: "none" },
     "&:hover fieldset": { border: "none" },
     "&.Mui-focused fieldset": { border: "none" },
-  },
-};
-
-// const ButtonStyle = {
-//   borderRadius: "6px",
-//   textTransform: "none",
-//   padding: "8px 16px",
-//   minWidth: "80px",
-//   height: "35px",
-//   fontSize: "12px",
-//   fontWeight: 500,
-//   fontFamily: "Poppins",
-//   lineHeight: 1.5,
-//   boxSizing: "border-box",
-//   cursor: "pointer",
-// };
-
-const style = {
-  position: "absolute",
-  borderRadius: "15px",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 800,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 2,
-  border: "none", // remove border
-  outline: "none", // remove focus outline
-};
-
-const style2 = {
-  position: "absolute",
-  borderRadius: "15px",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 600,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-  border: "none", // remove border
-  outline: "none", // remove focus outline
-};
-
-// const vendorOptions = [
-//   { label: "Elbit Systems Limited", accountNo: "1112" },
-//   { label: "Tata Consultancy Services", accountNo: "2234" },
-//   { label: "Infosys Limited", accountNo: "3345" },
-//   { label: "Wipro Technologies", accountNo: "4456" },
-//   { label: "HCL Technologies", accountNo: "5567" },
-// ];
-
-const autocompleteSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "8px",
-    fontSize: "14px",
-    backgroundColor: "#fff",
-    padding: "2px 8px !important",
-    fontFamily: "Poppins, sans-serif",
-    "& fieldset": {
-      borderColor: "#d0d0d0",
-      borderWidth: "1.5px",
-    },
-    "&:hover fieldset": {
-      borderColor: "#aaa",
-    },
-    "&.Mui-focused fieldset": {
-      borderColor: "#1a6fd4",
-      borderWidth: "1.5px",
-    },
-  },
-  "& .MuiInputBase-input": {
-    fontSize: "14px",
-    color: "#222",
-    padding: "9px 6px !important",
-  },
-};
-
-const inputSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "8px",
-    fontFamily: "Poppins, sans-serif",
-    fontSize: "14px",
-    backgroundColor: "#fff",
-    "& fieldset": {
-      borderColor: "#d0d0d0",
-      borderWidth: "1.5px",
-    },
-    "&:hover fieldset": {
-      borderColor: "#aaa",
-    },
-    "&.Mui-focused fieldset": {
-      borderColor: "#1a6fd4",
-      borderWidth: "1.5px",
-    },
-  },
-  "& .MuiInputBase-input": {
-    padding: "11px 14px",
-    fontSize: "14px",
-    color: "#222",
   },
 };
 
@@ -232,23 +121,23 @@ const statusColors = {
     bg: "#F5F5F5",
     color: "#616161",
   },
-  TO_EVALUATE: {
+  IN_REVIEW: {
     bg: "#FEF0DA",
     color: "#F99709",
   },
-  IN_APPROVAL: {
+  "Not Started": {
     bg: "#EAE7FF",
     color: "#725CFC",
   },
+  //   RETURNED: {
+  //     bg: "#EEF0F0",
+  //     color: "#8E9696",
+  //   },
   RETURNED: {
-    bg: "#EEF0F0",
-    color: "#8E9696",
-  },
-  RESUBMITTED: {
     bg: "#E8EDFF",
     color: "#6788FF",
   },
-  APPROVED: {
+  COMPLETED: {
     bg: "#DEF6F2",
     color: "#21BFA7",
   },
@@ -263,22 +152,20 @@ const statusColors = {
 };
 
 const statusLabels = {
-  INVITED: "Invited",
-  DRAFT: "Draft",
-  TO_EVALUATE: "To Evaluate",
+  IN_REVIEW: "In Review",
   IN_APPROVAL: "In Approval",
   RETURNED: "Returned",
   RESUBMITTED: "Resubmitted",
-  APPROVED: "Approved",
+  COMPLETED: "Completed",
   REJECTED: "Rejected",
-  VENDOR_CREATED: "Vendor Created",
+  "Not Started": "Not Started",
 };
 
 export default function Revaluation() {
   const [tableData, setTableData] = useState([]);
   const [tableData2, setTableData2] = useState([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("All Prospects");
+  const [activeTab, setActiveTab] = useState("All Vendors");
   const [anchorEl, setAnchorEl] = useState(null);
   const [kpi, setKpi] = useState(null);
 
@@ -312,7 +199,7 @@ export default function Revaluation() {
   const [companyError, setCompanyError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [supplierError, setSupplierError] = useState("");
-  const [prospectlist, setProspectlist] = useState({});
+  const [vendorList, setVendorList] = useState({});
   // const [vendorOptions, setVendorOption] = useState([]);
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState(
@@ -410,14 +297,16 @@ export default function Revaluation() {
       });
   };
 
-  const fetchProspectlist = async () => {
+  const fetchVendorlist = async () => {
     setLoading(true);
 
     try {
-      const res = await axios.get("http://10.50.20.89:9091/prospect/list");
+      const res = await axios.get(
+        "http://10.10.0.115:8080/vendor-reevaluation/home",
+      );
 
-      console.log(res.data);
-      setProspectlist(res.data);
+      console.log(res.data.all_vendors);
+      setVendorList(res.data.data);
     } catch (err) {
       console.log(err);
 
@@ -451,110 +340,16 @@ export default function Revaluation() {
     },
   ];
 
-  const dummyRows = [
-    {
-      vendoraccount: "VA-10001",
-      prospectid: "PRO-2026-001",
-      companyname: "ABC Technologies",
-      risklevel: "Low",
-      lastrevaluation: "2026-08-15",
-      nextrevaluation: "2027-08-15",
-      status: "APPROVED",
-      documentstatus: "Completed",
-    },
-    {
-      vendoraccount: "VA-10002",
-      prospectid: "PRO-2026-002",
-      companyname: "XYZ Solutions",
-      risklevel: "Medium",
-      lastrevaluation: "2026-07-20",
-      nextrevaluation: "2027-07-20",
-      status: "IN_APPROVAL",
-      documentstatus: "Pending",
-    },
-    {
-      vendoraccount: "VA-10003",
-      prospectid: "PRO-2026-003",
-      companyname: "Global Enterprises",
-      risklevel: "High",
-      lastrevaluation: "2026-06-10",
-      nextrevaluation: "2027-06-10",
-      status: "TO_EVALUATE",
-      documentstatus: "Pending",
-    },
-    {
-      vendoraccount: "VA-10004",
-      prospectid: "PRO-2026-004",
-      companyname: "TechNova Pvt Ltd",
-      risklevel: "Low",
-      lastrevaluation: "2026-05-25",
-      nextrevaluation: "2027-05-25",
-      status: "RETURNED",
-      documentstatus: "Incomplete",
-    },
-    {
-      vendoraccount: "VA-10005",
-      prospectid: "PRO-2026-005",
-      companyname: "Bright Future Ltd",
-      risklevel: "Medium",
-      lastrevaluation: "2026-04-15",
-      nextrevaluation: "2027-04-15",
-      status: "RESUBMITTED",
-      documentstatus: "Submitted",
-    },
-    {
-      vendoraccount: "VA-10006",
-      prospectid: "PRO-2026-006",
-      companyname: "Innovate Systems",
-      risklevel: "High",
-      lastrevaluation: "2026-03-05",
-      nextrevaluation: "2027-03-05",
-      status: "REJECTED",
-      documentstatus: "Rejected",
-    },
-    {
-      vendoraccount: "VA-10007",
-      prospectid: "PRO-2026-007",
-      companyname: "Pioneer Industries",
-      risklevel: "Low",
-      lastrevaluation: "2026-02-18",
-      nextrevaluation: "2027-02-18",
-      status: "VENDOR_CREATED",
-      documentstatus: "Completed",
-    },
-  ];
-
   const rows =
-    activeTab === "All Prospects"
-      ? dummyRows
-      : activeTab === "To Evaluate"
-        ? dummyRows.filter((row) => row.Status === "To Evaluate")
-        : activeTab === "In Approvals"
-          ? dummyRows.filter((row) => row.Status === "In Approval")
-          : activeTab === "Returned"
-            ? dummyRows.filter((row) => row.Status === "Returned")
-            : activeTab === "Vendor Created"
-              ? dummyRows.filter((row) => row.Status === "Vendor Created")
-              : activeTab === "Rejected"
-                ? dummyRows.filter((row) => row.Status === "Rejected")
-                : activeTab === "Resubmitted"
-                  ? dummyRows.filter((row) => row.Status === "Resubmitted")
-                  : [];
+    activeTab === "All Vendors"
+      ? vendorList?.all_vendors
+      : activeTab === "In Review"
+        ? vendorList?.in_review_vendors
+        : activeTab === "Returned"
+          ? vendorList?.returned_vendors
+          : [];
 
-  const handleVendorChange = (_, newValue) => {
-    setSelectedVendor(newValue);
-    setSelectedAccount(newValue ?? null);
-    setEmail(newValue?.email || "");
-    setMobileNumber(newValue?.phone || "");
-  };
-
-  // Selecting account no auto-fills vendor name
-  const handleAccountChange = (_, newValue) => {
-    setSelectedAccount(newValue);
-    setSelectedVendor(newValue ?? null);
-    setEmail(newValue?.email || "");
-    setMobileNumber(newValue?.phone || "");
-  };
+  console.log(rows);
 
   const navigate = useNavigate();
 
@@ -577,61 +372,27 @@ export default function Revaluation() {
   const open = Boolean(anchorEl);
 
   useEffect(() => {
-    fetchProspectlist();
+    fetchVendorlist();
   }, []);
 
-  const filteredRows = dummyRows.filter((row) => {
-    const searchMatch = Object.values(row).some((value) =>
-      String(value ?? "")
-        .toLowerCase()
-        .includes(search.toLowerCase().trim()),
-    );
+  const filteredRows = Array.isArray(rows)
+    ? rows.filter((row) => {
+        const searchMatch = Object.values(row ?? {}).some((value) =>
+          String(value ?? "")
+            .toLowerCase()
+            .includes(search.toLowerCase().trim()),
+        );
 
-    const statusMatch = status === "All" || row.status === status;
+        const statusMatch = status === "All" || row?.status === status;
 
-    return searchMatch && statusMatch;
-  });
+        return searchMatch && statusMatch;
+      })
+    : [];
   //   console.log(status);
 
   useEffect(() => {
-    sessionStorage.setItem("selectnav1", "Prospects");
+    sessionStorage.setItem("selectnav1", "Revaluation");
   }, []);
-
-  const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
-
-  // const topFunction = (topname, input2, input3) => {
-  //   if (topname == "Total Vendors") {
-  //     setActiveTab("Vendors");
-  //     setStatus("All");
-  //     // setStatus3("All");
-  //     sessionStorage.setItem("vendor_status", "All");
-  //     sessionStorage.setItem("vendorToggle", "Vendors");
-  //   } else if (topname == "Total Materials Mapped") {
-  //     setActiveTab("Materials");
-
-  //     setStatus("Vendor Mapped Material");
-
-  //     sessionStorage.setItem("vendor_status", "Vendor Mapped Material");
-  //     sessionStorage.setItem("vendorToggle", "Materials");
-  //   } else if (topname == "Active Vendors") {
-  //     setActiveTab("Vendors");
-  //     setStatus("Active");
-
-  //     sessionStorage.setItem("vendor_status", "Active");
-  //     sessionStorage.setItem("vendorToggle", "Vendors");
-  //   } else if (topname == "Inactive Vendors") {
-  //     setActiveTab("Vendors");
-  //     setStatus("Inactive");
-
-  //     sessionStorage.setItem("vendor_status", "Inactive");
-  //     sessionStorage.setItem("vendorToggle", "Vendors");
-  //   } else if (topname == "Upcoming Expirations") {
-  //     // setActiveTab("Vendors");
-  //     setStatus("true");
-  //     sessionStorage.setItem("vendor_status", "true");
-  //     setExpirationSub(input2);
-  //   }
-  // };
 
   return (
     <div>
@@ -639,7 +400,7 @@ export default function Revaluation() {
         <Loading />
       ) : (
         <Navbar>
-          <Revaluationtop />
+          <Revaluationtop vendordetails={vendorList?.summary} />
 
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ lg: 12, xs: 12, md: 12, sm: 12 }}>
@@ -674,6 +435,129 @@ export default function Revaluation() {
                     >
                       Vendors Queue
                     </Typography>
+                    {/* Tabs */}
+                    <Grid
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "inline-flex",
+                          flexWrap: { xs: "wrap", sm: "nowrap" },
+                          background: "#F2F3F4",
+                          borderRadius: "7px",
+                          gap: "6px",
+                          width: { xs: "100%", sm: "auto" },
+                        }}
+                      >
+                        {tabs.map((tab, index) => {
+                          const isActive = activeTab === tab.label;
+                          const isFirst = index === 0;
+                          const isLast = index === tabs.length - 1;
+
+                          return (
+                            <Box
+                              key={tab.label}
+                              onClick={() => {
+                                setActiveTab(tab.label);
+                                sessionStorage.setItem(
+                                  "vendorToggle",
+                                  tab.label,
+                                );
+
+                                setPage(0);
+                                // setStatus("All");
+                                setSearch("");
+                                // setStatus2("All");
+
+                                if (tab.label == "Materials") {
+                                  sessionStorage.setItem(
+                                    "vendor_status",
+                                    "All",
+                                  );
+                                  setStatus("All");
+                                } else {
+                                  sessionStorage.setItem(
+                                    "vendor_status",
+                                    "All",
+                                  );
+                                  setStatus("All");
+                                }
+                              }}
+                              sx={{
+                                minWidth: { xs: "100%", sm: "130px" },
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                px: 2,
+                                py: 0.9,
+                                cursor: "pointer",
+                                background: isActive
+                                  ? "#DBE5F5"
+                                  : "transparent",
+                                color: isActive ? "#0C52BC" : "#2e2e2e",
+                                borderRadius: isActive
+                                  ? isFirst
+                                    ? "7px 0 0 7px"
+                                    : isLast
+                                      ? "0 7px 7px 0"
+                                      : "0"
+                                  : "0",
+                              }}
+                            >
+                              {/* Center container */}
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 1,
+                                  width: "100%",
+                                }}
+                              >
+                                <Box
+                                  component="img"
+                                  src={isActive ? tab.activeimg : tab.img}
+                                  alt={tab.label}
+                                  sx={{ height: 10, objectFit: "contain" }}
+                                />
+
+                                <Typography
+                                  fontWeight={500}
+                                  sx={{
+                                    fontFamily: "Poppins, sans-serif",
+                                    fontSize: "12px",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {tab.label}
+                                </Typography>
+
+                                <Box
+                                  sx={{
+                                    background: isActive
+                                      ? "#0C52BC"
+                                      : "#E0E0E0",
+                                    color: isActive ? "#fff" : "#333",
+                                    borderRadius: "10px",
+                                    px: "6px",
+                                    fontSize: "10px",
+                                    fontWeight: 500,
+                                    lineHeight: 1.5,
+                                    fontFamily: "Poppins, sans-serif",
+                                  }}
+                                >
+                                  {tab.count}
+                                </Box>
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Grid>
                     <Grid
                       sx={{
                         display: "flex",
@@ -749,15 +633,52 @@ export default function Revaluation() {
                           />
                         </Grid>
                       </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          setModal2(true);
+                        }}
+                        sx={{
+                          borderRadius: "6px",
+                          textTransform: "none",
+                          minWidth: "auto",
+                          padding: "7px 12px",
+                          backgroundColor: "#f5f5f5",
+                          borderColor: "#ddd",
+                          color: "#555",
+                          "&:hover": {
+                            backgroundColor: "#eee",
+                            borderColor: "#ccc",
+                          },
+                        }}
+                      >
+                        <Grid
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="space-between"
+                          sx={{ gap: 1 }}
+                        >
+                          <img
+                            src={Settingicon}
+                            alt="filter"
+                            style={{
+                              width: 15,
+                              height: 15,
+                              objectFit: "contain",
+                            }}
+                          />
+                        </Grid>
+                      </Button>
 
                       {/* New Prospect */}
                       <Button
                         variant="contained"
-                        startIcon={<AddIcon />}
+                        // startIcon={<AddIcon />}
                         sx={{
                           ...buttonStyle,
                           backgroundColor: "#1a6fd4",
                           color: "#fff",
+                          width: 170,
                         }}
                         onClick={() => {
                           setModal(true);
@@ -769,134 +690,6 @@ export default function Revaluation() {
                         Request Revaluation
                       </Button>
                     </Grid>
-                  </Grid>
-
-                  <Grid
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "inline-flex",
-                        flexWrap: { xs: "wrap", sm: "nowrap" },
-                        background: "#F2F3F4",
-                        borderRadius: "7px",
-                        gap: "6px",
-                        width: { xs: "100%", sm: "auto" },
-                      }}
-                    >
-                      {tabs.map((tab, index) => {
-                        const isActive = activeTab === tab.label;
-                        const isFirst = index === 0;
-                        const isLast = index === tabs.length - 1;
-
-                        return (
-                          <Box
-                            key={tab.label}
-                            onClick={() => {
-                              setActiveTab(tab.label);
-                              sessionStorage.setItem("vendorToggle", tab.label);
-
-                              setPage(0);
-                              // setStatus("All");
-                              setSearch("");
-                              // setStatus2("All");
-
-                              if (tab.label == "Materials") {
-                                sessionStorage.setItem("vendor_status", "All");
-                                setStatus("All");
-                              } else {
-                                sessionStorage.setItem("vendor_status", "All");
-                                setStatus("All");
-                              }
-                            }}
-                            sx={{
-                              minWidth: { xs: "100%", sm: "130px" },
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              px: 2,
-                              py: 0.9,
-                              cursor: "pointer",
-                              background: isActive ? "#DBE5F5" : "transparent",
-                              color: isActive ? "#0C52BC" : "#2e2e2e",
-                              borderRadius: isActive
-                                ? isFirst
-                                  ? "7px 0 0 7px"
-                                  : isLast
-                                    ? "0 7px 7px 0"
-                                    : "0"
-                                : "0",
-                            }}
-                          >
-                            {/* Center container */}
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 1,
-                                width: "100%",
-                              }}
-                            >
-                              <Box
-                                component="img"
-                                src={isActive ? tab.activeimg : tab.img}
-                                alt={tab.label}
-                                sx={{ height: 10, objectFit: "contain" }}
-                              />
-
-                              <Typography
-                                fontWeight={500}
-                                sx={{
-                                  fontFamily: "Poppins, sans-serif",
-                                  fontSize: "12px",
-                                  textAlign: "center",
-                                }}
-                              >
-                                {tab.label}
-                              </Typography>
-
-                              <Box
-                                sx={{
-                                  background: isActive ? "#0C52BC" : "#E0E0E0",
-                                  color: isActive ? "#fff" : "#333",
-                                  borderRadius: "10px",
-                                  px: "6px",
-                                  fontSize: "10px",
-                                  fontWeight: 500,
-                                  lineHeight: 1.5,
-                                  fontFamily: "Poppins, sans-serif",
-                                }}
-                              >
-                                {tab.count}
-                              </Box>
-                            </Box>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                    {/* <Box
-                      sx={{ display: "flex", alignItems: "center", gap: "8px" }}
-                    >
-                      <Typography
-                        sx={{ fontFamily: "Poppins", fontSize: "12px" }}
-                      >
-                        My Prospect
-                      </Typography>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={checked}
-                            onChange={(e) => setChecked(e.target.checked)}
-                          />
-                        }
-                        // label={checked ? "Yes" : "No"}
-                      />
-                    </Box> */}
                   </Grid>
                 </Grid>
 
@@ -938,105 +731,112 @@ export default function Revaluation() {
 
                       {/* Body */}
                       <TableBody>
-                        {filteredRows
-                          .slice(
-                            page * rowsPerPage,
-                            page * rowsPerPage + rowsPerPage,
-                          )
-                          .map((row, index) => {
-                            const chipStyle = statusColors[row.status] || {
-                              bg: "#ECEFF1",
-                              color: "#455A64",
-                            };
+                        {filteredRows.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={8}
+                              align="center"
+                              sx={{
+                                py: 4,
+                                fontFamily: "Poppins, sans-serif",
+                                color: "#64748B",
+                                fontSize: "14px",
+                              }}
+                            >
+                              No Data Available
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredRows
+                            .slice(
+                              page * rowsPerPage,
+                              page * rowsPerPage + rowsPerPage,
+                            )
+                            .map((row, index) => {
+                              const chipStyle = statusColors[row.status] || {
+                                bg: "#ECEFF1",
+                                color: "#455A64",
+                              };
 
-                            return (
-                              <TableRow
-                                key={`${row.vendoraccount}-${row.prospectid}-${index}`}
-                                hover
-                                sx={{
-                                  cursor: "pointer",
-                                  "&:hover": {
-                                    backgroundColor: "#F8FAFC",
-                                  },
-                                }}
-                                onClick={() => {
-                                  if (
-                                    row.status !== "INVITED" &&
-                                    row.status !== "RESUBMITTED"
-                                  ) {
-                                    navigate("/ProspectDetails");
-                                  }
+                              return (
+                                <TableRow
+                                  key={`${row.vendoraccount}-${row.prospectid}-${index}`}
+                                  hover
+                                  sx={{
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      backgroundColor: "#F8FAFC",
+                                    },
+                                  }}
+                                  onClick={() => {
+                                    navigate("/ParentReevaluation");
+                                  }}
+                                >
+                                  {/* Vendor Account No */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.vendoraccount || "-"}
+                                  </TableCell>
 
-                                  sessionStorage.setItem(
-                                    "Prospect_id",
-                                    row.prospectid,
-                                  );
+                                  {/* Prospect ID */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.prospectid || "-"}
+                                  </TableCell>
 
-                                  if (row.email) {
-                                    sessionStorage.setItem(
-                                      "To_Email",
-                                      row.email,
-                                    );
-                                  }
-                                }}
-                              >
-                                {/* Vendor Account No */}
-                                <TableCell>
-                                  {row.vendoraccount || "-"}
-                                </TableCell>
+                                  {/* Vendor Name */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.vendorname || "-"}
+                                  </TableCell>
 
-                                {/* Prospect ID */}
-                                <TableCell>{row.prospectid || "-"}</TableCell>
+                                  {/* Risk Level */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.risklevel || "-"}
+                                  </TableCell>
 
-                                {/* Vendor Name */}
-                                <TableCell>{row.companyname || "-"}</TableCell>
+                                  {/* Last Revaluation */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.lastreevaluation
+                                      ? dayjs(row.lastreevaluation).format(
+                                          "DD-MMM-YYYY",
+                                        )
+                                      : "-"}
+                                  </TableCell>
 
-                                {/* Risk Level */}
-                                <TableCell>{row.risklevel || "-"}</TableCell>
+                                  {/* Next Revaluation */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.nextreevaluationdate
+                                      ? dayjs(row.nextreevaluationdate).format(
+                                          "DD-MMM-YYYY",
+                                        )
+                                      : "-"}
+                                  </TableCell>
 
-                                {/* Last Revaluation */}
-                                <TableCell>
-                                  {row.lastrevaluation
-                                    ? dayjs(row.lastrevaluation).format(
-                                        "DD-MMM-YYYY",
-                                      )
-                                    : "-"}
-                                </TableCell>
+                                  {/* Status */}
+                                  <TableCell align="center" sx={bodyCellStyle}>
+                                    <Chip
+                                      label={
+                                        statusLabels[row.status] ||
+                                        row.status ||
+                                        "-"
+                                      }
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: chipStyle.bg,
+                                        color: chipStyle.color,
+                                        fontWeight: 500,
+                                        minWidth: "100px",
+                                        fontFamily: "Poppins, sans-serif",
+                                      }}
+                                    />
+                                  </TableCell>
 
-                                {/* Next Revaluation */}
-                                <TableCell>
-                                  {row.nextrevaluation
-                                    ? dayjs(row.nextrevaluation).format(
-                                        "DD-MMM-YYYY",
-                                      )
-                                    : "-"}
-                                </TableCell>
-
-                                {/* Status */}
-                                <TableCell align="center">
-                                  <Chip
-                                    label={
-                                      statusLabels[row.status] ||
-                                      row.status ||
-                                      "-"
-                                    }
-                                    size="small"
-                                    sx={{
-                                      backgroundColor: chipStyle.bg,
-                                      color: chipStyle.color,
-                                      fontWeight: 600,
-                                      minWidth: "100px",
-                                    }}
-                                  />
-                                </TableCell>
-
-                                {/* Document Status */}
-                                <TableCell>
-                                  {row.documentstatus || "-"}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
+                                  {/* Document Status */}
+                                  <TableCell sx={bodyCellStyle}>
+                                    {row.documentstatus || "-"}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                        )}
                       </TableBody>
                     </Table>
                     <Grid
@@ -1250,367 +1050,27 @@ export default function Revaluation() {
             aria-labelledby="modal-modal-title"
             aria-describedby="modal-modal-description"
           >
-            <Box
-              sx={{ ...style, p: 0, borderRadius: "16px", overflow: "hidden" }}
-            >
-              <Snackbar
-                open={snackbar.open}
-                autoHideDuration={5000}
-                onClose={() =>
-                  setSnackbar((prev) => ({
-                    ...prev,
-                    open: false,
-                  }))
-                }
-                anchorOrigin={{ vertical: "top", horizontal: "center" }}
-              >
-                <Alert
-                  severity={snackbar.severity}
-                  onClose={() =>
-                    setSnackbar((prev) => ({
-                      ...prev,
-                      open: false,
-                    }))
-                  }
-                  variant="filled"
-                  sx={{ fontFamily: "Poppins, sans-serif" }}
-                >
-                  {snackbar.message}
-                </Alert>
-              </Snackbar>
-              {/* Header */}
-              <Box
-                sx={{
-                  position: "relative",
-                  px: 4,
-                  pt: 4,
-                  pb: 3,
-                  backgroundColor: "#fff",
-                  // borderBottom: "1px solid #EDEFF3",
-                }}
-              >
-                <IconButton
-                  onClick={() => {
-                    setModal(false);
-                    setCompany("");
-                    setSelectedSupplier(null);
-                    setEmail("");
-                    setCompanyError("");
-                    setSupplierError("");
-                    setEmailError("");
-                  }}
-                  sx={{
-                    position: "absolute",
-                    top: 16,
-                    right: 16,
-                    color: "#8a8a8a",
-                    "&:hover": { backgroundColor: "#F3F6FC", color: "#1a1a1a" },
-                  }}
-                  size="small"
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-
-                <Typography
-                  sx={{
-                    fontFamily: "Poppins, sans-serif",
-                    fontSize: "22px",
-                    fontWeight: 600,
-                    color: "#1a1a1a",
-                    letterSpacing: "-0.3px",
-                  }}
-                >
-                  Create a New Prospect
-                </Typography>
-                {/* <Typography
-                  sx={{
-                    fontFamily: "Poppins, sans-serif",
-                    fontSize: "13px",
-                    fontWeight: 400,
-                    color: "#8a8a8a",
-                    mt: 0.5,
-                  }}
-                >
-                  Add supplier details to send an invitation
-                </Typography> */}
-              </Box>
-
-              {/* Body */}
-              <Box
-                sx={{
-                  backgroundColor: "#F8F9FB",
-                  px: 4,
-                  py: 3.5,
-                  // border: "1px solid red",
-                  mx: 4,
-                  borderRadius: "10px",
-                }}
-              >
-                <Paper
-                  sx={{
-                    p: 3,
-                    borderRadius: "12px",
-                    border: "1px solid #EDEFF3",
-                  }}
-                  elevation={0}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: "Poppins, sans-serif",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      color: "#5a5a5a",
-                      letterSpacing: "0.4px",
-                      textTransform: "uppercase",
-                      mb: 2.5,
-                    }}
-                  >
-                    Supplier Information
-                  </Typography>
-
-                  {/* Company Name - full width */}
-                  <Box sx={{ mb: 2.5 }}>
-                    <LabelText>Company Name</LabelText>
-                    <TextField
-                      fullWidth
-                      placeholder="Enter company name"
-                      value={company}
-                      onChange={(e) => {
-                        setCompany(e.target.value);
-                        if (companyError) setCompanyError("");
-                      }}
-                      error={!!companyError}
-                      helperText={companyError}
-                      sx={{ ...textFieldStyle, fontWeight: 500 }}
-                    />
-                  </Box>
-
-                  {/* Row: Supplier Group + Email */}
-                  <Grid container spacing={2.5}>
-                    <Grid size={{ lg: 6, xs: 12, md: 6, sm: 12 }}>
-                      <LabelText>Supplier Group</LabelText>
-                      <Autocomplete
-                        fullWidth
-                        options={
-                          Array.isArray(supplierGroup) ? supplierGroup : []
-                        }
-                        value={selectedSupplier}
-                        onChange={(event, value) => {
-                          setSelectedSupplier(value);
-                          if (supplierError) setSupplierError("");
-                        }}
-                        slotProps={{
-                          paper: {
-                            sx: {
-                              fontFamily: "Poppins",
-                              fontSize: "12px",
-                            },
-                          },
-                          listbox: {
-                            sx: {
-                              fontFamily: "Poppins",
-                              fontSize: "12px",
-                            },
-                          },
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            placeholder="Select supplier group"
-                            error={!!supplierError}
-                            helperText={supplierError}
-                            sx={textFieldStyle}
-                          />
-                        )}
-                      />
-                    </Grid>
-
-                    <Grid size={{ lg: 6, xs: 12, md: 6, sm: 12 }}>
-                      <LabelText>Email Address</LabelText>
-                      <TextField
-                        fullWidth
-                        placeholder="Enter email address"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (emailError) setEmailError("");
-                        }}
-                        error={!!emailError}
-                        helperText={emailError}
-                        sx={{ ...textFieldStyle, fontWeight: 500 }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Paper>
-              </Box>
-
-              {/* Footer actions */}
-              <Box
-                sx={{
-                  px: 4,
-                  py: 2.5,
-                  display: "flex",
-                  gap: 1.5,
-                  justifyContent: "center",
-                  backgroundColor: "#fff",
-                  alignItems: "center",
-                }}
-              >
-                <Button
-                  variant="contained"
-                  onClick={() => sendInvitation()}
-                  sx={{
-                    ...buttonStyle,
-                    backgroundColor: "#f0344a",
-                    color: "#fff",
-                    // textTransform: "none",
-                    // fontWeight: 500,
-                    // fontSize: "13px",
-                    // borderRadius: "8px",
-                    // padding: "8px 22px",
-                    // boxShadow: "none",
-                    // fontFamily: "Poppins, sans-serif",
-                    "&:hover": {
-                      backgroundColor: "#d62b3f",
-                      boxShadow: "none",
-                    },
-                    "&:active": {
-                      backgroundColor: "#c0253a",
-                      boxShadow: "none",
-                    },
-                    "&:disabled": { backgroundColor: "#FF97A9", color: "#fff" },
-                  }}
-                >
-                  Send Invitation
-                </Button>
-                <Button
-                  onClick={() => setModal(false)}
-                  sx={{
-                    // border: "1.5px solid #E0E2E8",
-                    // color: "#5a5a5a",
-                    // textTransform: "none",
-                    // fontWeight: 500,
-                    // fontSize: "13px",
-                    // borderRadius: "8px",
-                    // padding: "8px 22px",
-                    // fontFamily: "Poppins, sans-serif",
-                    // "&:hover": {
-                    //   backgroundColor: "#F8F9FB",
-                    //   border: "1.5px solid #D0D2D8",
-                    // },
-                    ...buttonStyle,
-                    color: "#f0344a",
-                    border: "2px solid #f0344a",
-                  }}
-                >
-                  Cancel
-                </Button>
-              </Box>
-            </Box>
+            <RequestRevaluation
+              onClose={() => {
+                setModal(false);
+              }}
+            />
           </Modal>
 
-          {modal2 ? (
+          {modal2 && (
             <Modal
               open={modal2}
-              // onClose={() => {
-              //   setModal2(false);
-              //   setModal(false);
-              // }}
-              aria-labelledby="success-modal-title"
-              aria-describedby="success-modal-description"
+              onClose={() => {
+                setModal2(false);
+              }}
+              aria-labelledby="vendor-revaluation-title"
             >
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: 420,
-                  bgcolor: "background.paper",
-                  borderRadius: 3,
-                  boxShadow: 24,
-                  p: 4,
-                  outline: "none",
-                  textAlign: "center",
+              <RevaluationSetting
+                onClose={() => {
+                  setModal2(false);
                 }}
-              >
-                <CheckCircleRoundedIcon
-                  sx={{
-                    fontSize: 60,
-                    color: "#2E7D32",
-                    mb: 2,
-                  }}
-                />
-
-                <Typography
-                  id="success-modal-title"
-                  variant="h6"
-                  sx={{
-                    fontFamily: "Poppins, sans-serif",
-                    fontWeight: 600,
-                    color: "#1F2937",
-                  }}
-                >
-                  Prospect Created Successfully
-                </Typography>
-
-                {message?.Registration?.PROSPECT_ID && (
-                  <Typography
-                    sx={{
-                      mt: 1,
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: "#FF2E53",
-                      fontFamily: "Poppins, sans-serif",
-                    }}
-                  >
-                    Prospect ID: {message.Registration.PROSPECT_ID}
-                  </Typography>
-                )}
-
-                <Typography
-                  id="success-modal-description"
-                  sx={{
-                    mt: 2,
-                    color: "#6B7280",
-                    fontSize: 14,
-                    lineHeight: 1.7,
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  {message?.message}
-                </Typography>
-
-                <Button
-                  variant="contained"
-                  onClick={() => {
-                    setModal2(false);
-                    setModal(false);
-                    fetchProspectlist();
-                  }}
-                  sx={{
-                    mt: 4,
-                    minWidth: 140,
-                    height: 42,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    fontFamily: "Poppins, sans-serif",
-                    backgroundColor: "#FF2E53",
-                    boxShadow: "0 8px 20px rgba(255,46,83,0.25)",
-                    "&:hover": {
-                      backgroundColor: "#E6294A",
-                      boxShadow: "0 10px 24px rgba(255,46,83,0.35)",
-                    },
-                  }}
-                >
-                  Continue
-                </Button>
-              </Box>
+              />
             </Modal>
-          ) : (
-            ""
           )}
         </Navbar>
       )}
