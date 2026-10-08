@@ -250,7 +250,7 @@ export default function Vendors() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://10.50.20.89:9091/vendorlist/invite");
+      const res = await axios.post("http://10.10.0.115:8095/vendorlist/invite");
 
       setVendorOption(
         res?.data?.data
@@ -318,9 +318,9 @@ export default function Vendors() {
     try {
       const res = await axios.post(
         activeTab === "Vendors"
-          ? "http://10.50.20.89:9091/vendorlist/list"
+          ? "http://10.10.0.115:8095/vendorlist/list"
           : activeTab === "Materials"
-            ? "http://10.50.20.89:9091/materilslist/materials"
+            ? "http://10.10.0.115:8095/materilslist/materials"
             : "",
       );
 
@@ -345,7 +345,7 @@ export default function Vendors() {
     // setLoading(true);
 
     try {
-      const res = await axios.post("http://10.50.20.89:9091/vendorlist/list");
+      const res = await axios.post("http://10.10.0.115:8095/vendorlist/list");
 
       console.log(res.data);
 
@@ -451,7 +451,7 @@ export default function Vendors() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/auth/send-set-password-link",
+        "http://10.10.0.115:8095/auth/send-set-password-link",
         payload,
       );
 

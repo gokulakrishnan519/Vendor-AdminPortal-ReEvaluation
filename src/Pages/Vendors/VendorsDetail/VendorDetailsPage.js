@@ -81,7 +81,7 @@ export default function VendorDetailsPage() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/vendor/dashboard",
+        "http://10.10.0.115:8095/vendor/dashboard",
         payload,
       );
 
@@ -109,7 +109,7 @@ export default function VendorDetailsPage() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/vendor/bid-materials",
+        "http://10.10.0.115:8095/vendor/bid-materials",
         payload,
       );
 
@@ -137,7 +137,7 @@ export default function VendorDetailsPage() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/vendor/newrfqlist",
+        "http://10.10.0.115:8095/vendor/newrfqlist",
         payload,
       );
 
@@ -165,7 +165,7 @@ export default function VendorDetailsPage() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/vendor/list",
+        "http://10.10.0.115:8095/vendor/list",
         payload,
       );
 
@@ -193,7 +193,7 @@ export default function VendorDetailsPage() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/RFQ/rfqhistory",
+        "http://10.10.0.115:8095/RFQ/rfqhistory",
         payload,
       );
 
@@ -233,8 +233,8 @@ export default function VendorDetailsPage() {
     try {
       const url =
         v === "polist"
-          ? "http://10.50.20.89:9091/vendor/details"
-          : "http://10.50.20.89:9091/vendor/rfq-detail";
+          ? "http://10.10.0.115:8095/vendor/details"
+          : "http://10.10.0.115:8095/vendor/rfq-detail";
 
       const data = v == "polist" ? payload : payload1;
 

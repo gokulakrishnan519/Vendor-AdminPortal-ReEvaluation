@@ -154,11 +154,11 @@ const POsDetail = () => {
     try {
       const res = await axios.post(
         tabName == "All POs"
-          ? "http://10.50.20.89:9091/po/details"
+          ? "http://10.10.0.115:8095/po/details"
           : tabName == "Bidding Orders"
-            ? "http://10.50.20.89:9091/po/biddetails"
+            ? "http://10.10.0.115:8095/po/biddetails"
             : tabName == "Direct Orders"
-              ? "http://10.50.20.89:9091/po/directdetails "
+              ? "http://10.10.0.115:8095/po/directdetails "
               : "",
         payload,
       );
@@ -187,7 +187,7 @@ const POsDetail = () => {
     };
 
     try {
-      const res = await axios.post("http://10.50.20.89:9091/po/lines", payload);
+      const res = await axios.post("http://10.10.0.115:8095/po/lines", payload);
 
       console.log(res.data);
 

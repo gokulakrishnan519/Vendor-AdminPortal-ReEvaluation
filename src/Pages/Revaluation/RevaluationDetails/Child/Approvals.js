@@ -118,7 +118,7 @@ export default function Approvals(props) {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/vendor-approval/fetch",
+        "http://10.10.0.115:8095/vendor-approval/fetch",
         payload,
       );
 
@@ -229,7 +229,7 @@ export default function Approvals(props) {
 
       try {
         const response = await axios.post(
-          "http://10.50.20.89:9091/vendor-approval/decision",
+          "http://10.10.0.115:8095/vendor-approval/decision",
           payload,
         );
 

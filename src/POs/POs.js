@@ -332,7 +332,7 @@ export default function POs() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://10.50.20.89:9091/po/kpi");
+      const res = await axios.post("http://10.10.0.115:8095/po/kpi");
 
       console.log(res.data.data);
 
@@ -354,11 +354,11 @@ export default function POs() {
     try {
       const res = await axios.post(
         activeTab === "All POs"
-          ? "http://10.50.20.89:9091/po/list"
+          ? "http://10.10.0.115:8095/po/list"
           : activeTab === "Bidding Orders"
-            ? "http://10.50.20.89:9091/po/bidlist"
+            ? "http://10.10.0.115:8095/po/bidlist"
             : activeTab === "Direct Orders"
-              ? "http://10.50.20.89:9091/po/directlist "
+              ? "http://10.10.0.115:8095/po/directlist "
               : "",
       );
 

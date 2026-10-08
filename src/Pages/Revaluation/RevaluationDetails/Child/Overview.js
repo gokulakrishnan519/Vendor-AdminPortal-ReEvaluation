@@ -46,7 +46,7 @@ const FieldValue = styled(Typography)`
 `;
 
 // Main Component
-export default function CompanyInfoDashboard() {
+export default function Overview() {
   const [selected, setSelected] = useState(0);
   const { formData, setFormData } = React.useContext(UserContext);
 
@@ -63,7 +63,7 @@ export default function CompanyInfoDashboard() {
   const handleViewFile = async (attachid, attchfor, attchname, contenttype) => {
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/api/vendor-onboarding/file-content/fetch",
+        "http://10.10.0.115:8095/api/vendor-onboarding/file-content/fetch",
         {
           AttachmentId: attachid,
           ProspectId: formData?.PROSPECT_ID,
@@ -328,10 +328,10 @@ export default function CompanyInfoDashboard() {
 
               <TableContainer
                 component={Paper}
-                variant="outlined"
+                variant='outlined'
                 sx={{ borderRadius: 2 }}
               >
-                <Table size="small">
+                <Table size='small'>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                     <TableRow>
                       <TableCell sx={{ fontSize: "12px", fontWeight: 600 }}>
@@ -347,7 +347,7 @@ export default function CompanyInfoDashboard() {
                         Mobile Number
                       </TableCell>
                       <TableCell
-                        align="center"
+                        align='center'
                         sx={{ fontSize: "12px", fontWeight: 600 }}
                       >
                         Primary
@@ -370,7 +370,7 @@ export default function CompanyInfoDashboard() {
                           <TableCell sx={{ fontSize: "13px" }}>
                             {item?.MOBILENUMBER || "-"}
                           </TableCell>
-                          <TableCell align="center">
+                          <TableCell align='center'>
                             {item?.ISPRIMARY && (
                               <CheckIcon sx={{ fontSize: "18px" }} />
                             )}
@@ -379,7 +379,7 @@ export default function CompanyInfoDashboard() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} align="center">
+                        <TableCell colSpan={5} align='center'>
                           No contacts available
                         </TableCell>
                       </TableRow>
@@ -451,7 +451,7 @@ export default function CompanyInfoDashboard() {
 
               {/* Banking Information */}
               <Typography
-                variant="h6"
+                variant='h6'
                 fontWeight={600}
                 mt={4}
                 mb={2}
@@ -514,7 +514,7 @@ export default function CompanyInfoDashboard() {
 
               {/* Registration Details */}
               <Typography
-                variant="h6"
+                variant='h6'
                 fontWeight={600}
                 mt={4}
                 mb={2}
@@ -560,27 +560,33 @@ export default function CompanyInfoDashboard() {
                   <Typography fontWeight={600} sx={{ fontSize: "13px" }}>
                     Factory Licence
                   </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: "13px",
-                      mt: 0.5,
-                      cursor: "pointer",
-                      color: "primary.main",
-                      textDecoration: "underline",
-                    }}
-                    onClick={() =>
-                      handleViewFile(
-                        formData?.FINANCIALCOMMERCIAL?.ATTACHMENTID,
-                        formData?.FINANCIALCOMMERCIAL?.ATTACHMENTFOR,
-                        formData?.FINANCIALCOMMERCIAL?.FACTORYLICENSEFILENAME,
-                        formData?.FINANCIALCOMMERCIAL?.CONTENTTYPE,
-                      )
-                    }
-                  >
-                    <DescriptionIcon sx={{ fontSize: "16px", mr: 0.5 }} />
-                    {formData?.FINANCIALCOMMERCIAL?.FACTORYLICENSEFILENAME ||
-                      "-"}
-                  </Typography>
+                  {formData?.FINANCIALCOMMERCIAL?.FACTORYLICENSEFILENAME ? (
+                    <Typography
+                      sx={{
+                        fontSize: "13px",
+                        mt: 0.5,
+                        cursor: "pointer",
+                        color: "primary.main",
+                        textDecoration: "underline",
+                      }}
+                      onClick={() =>
+                        handleViewFile(
+                          formData?.FINANCIALCOMMERCIAL?.ATTACHMENTID,
+                          formData?.FINANCIALCOMMERCIAL?.ATTACHMENTFOR,
+                          formData?.FINANCIALCOMMERCIAL?.FACTORYLICENSEFILENAME,
+                          formData?.FINANCIALCOMMERCIAL?.CONTENTTYPE,
+                        )
+                      }
+                    >
+                      <DescriptionIcon sx={{ fontSize: "16px", mr: 0.5 }} />
+                      {formData?.FINANCIALCOMMERCIAL?.FACTORYLICENSEFILENAME ||
+                        "-"}
+                    </Typography>
+                  ) : (
+                    <Typography sx={{ fontSize: "13px", mt: 0.5 }}>
+                      No Attachment
+                    </Typography>
+                  )}
                 </Grid>
               </Grid>
               <Typography fontWeight={600} sx={{ fontSize: "13px" }}>
@@ -588,10 +594,10 @@ export default function CompanyInfoDashboard() {
               </Typography>
               <TableContainer
                 component={Paper}
-                variant="outlined"
+                variant='outlined'
                 sx={{ borderRadius: 2, mb: 4, mt: 2 }}
               >
-                <Table size="small">
+                <Table size='small'>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                     <TableRow>
                       <TableCell
@@ -655,7 +661,7 @@ export default function CompanyInfoDashboard() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} align="center">
+                        <TableCell colSpan={5} align='center'>
                           No certifications available
                         </TableCell>
                       </TableRow>
@@ -706,7 +712,7 @@ export default function CompanyInfoDashboard() {
 
               {/* Business References */}
               <Typography
-                variant="h6"
+                variant='h6'
                 fontWeight={600}
                 mt={4}
                 mb={2}
@@ -717,10 +723,10 @@ export default function CompanyInfoDashboard() {
 
               <TableContainer
                 component={Paper}
-                variant="outlined"
+                variant='outlined'
                 sx={{ borderRadius: 2 }}
               >
-                <Table size="small">
+                <Table size='small'>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                     <TableRow>
                       <TableCell sx={{ fontSize: "12px", fontWeight: 600 }}>
@@ -753,7 +759,7 @@ export default function CompanyInfoDashboard() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={3} align="center">
+                        <TableCell colSpan={3} align='center'>
                           No business references available
                         </TableCell>
                       </TableRow>
@@ -782,7 +788,7 @@ export default function CompanyInfoDashboard() {
                 <>
                   {/* OEM Details */}
                   <Typography
-                    variant="h6"
+                    variant='h6'
                     fontWeight={600}
                     mt={4}
                     mb={2}
@@ -793,10 +799,10 @@ export default function CompanyInfoDashboard() {
 
                   <TableContainer
                     component={Paper}
-                    variant="outlined"
+                    variant='outlined'
                     sx={{ borderRadius: 2 }}
                   >
-                    <Table size="small">
+                    <Table size='small'>
                       <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                         <TableRow>
                           <TableCell sx={{ fontSize: "12px", fontWeight: 600 }}>
@@ -842,7 +848,7 @@ export default function CompanyInfoDashboard() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={2} align="center">
+                            <TableCell colSpan={2} align='center'>
                               No OEM details available
                             </TableCell>
                           </TableRow>
@@ -860,10 +866,10 @@ export default function CompanyInfoDashboard() {
 
               <TableContainer
                 component={Paper}
-                variant="outlined"
+                variant='outlined'
                 sx={{ borderRadius: 2, mb: 4 }}
               >
-                <Table size="small">
+                <Table size='small'>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                     <TableRow>
                       <TableCell
@@ -876,7 +882,7 @@ export default function CompanyInfoDashboard() {
                         Certification
                       </TableCell>
                       <TableCell
-                        align="center"
+                        align='center'
                         sx={{
                           fontSize: "12px",
                           fontWeight: 500,
@@ -924,10 +930,10 @@ export default function CompanyInfoDashboard() {
                           <TableCell sx={{ fontSize: "13px" }}>
                             {item?.CERTIFICATIONTYPE || "-"}
                           </TableCell>
-                          <TableCell align="center" sx={{ fontSize: "13px" }}>
+                          <TableCell align='center' sx={{ fontSize: "13px" }}>
                             <Chip
                               label={item?.STATUS || "N/A"}
-                              size="small"
+                              size='small'
                               sx={{
                                 bgcolor: "#E6EDF8",
                                 color: "#0C52BC",
@@ -972,7 +978,7 @@ export default function CompanyInfoDashboard() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} align="center">
+                        <TableCell colSpan={5} align='center'>
                           No certifications available
                         </TableCell>
                       </TableRow>
@@ -983,7 +989,7 @@ export default function CompanyInfoDashboard() {
 
               {/* Quality Assurance Questionnaire */}
               <Typography
-                variant="h6"
+                variant='h6'
                 fontWeight={600}
                 mt={4}
                 mb={2}
@@ -994,10 +1000,10 @@ export default function CompanyInfoDashboard() {
 
               <TableContainer
                 component={Paper}
-                variant="outlined"
+                variant='outlined'
                 sx={{ borderRadius: 2 }}
               >
-                <Table size="small">
+                <Table size='small'>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                     <TableRow>
                       <TableCell sx={{ fontSize: "12px", fontWeight: 600 }}>
@@ -1039,10 +1045,10 @@ export default function CompanyInfoDashboard() {
 
               <TableContainer
                 component={Paper}
-                variant="outlined"
+                variant='outlined'
                 sx={{ borderRadius: 2, mb: 4 }}
               >
-                <Table size="small">
+                <Table size='small'>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
                     <TableRow>
                       <TableCell sx={{ fontSize: "12px", fontWeight: 600 }}>
@@ -1082,7 +1088,7 @@ export default function CompanyInfoDashboard() {
 
               {/* Submission Details */}
               <Typography
-                variant="h6"
+                variant='h6'
                 fontWeight={600}
                 mt={4}
                 mb={2}

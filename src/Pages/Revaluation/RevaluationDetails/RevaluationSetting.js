@@ -15,6 +15,7 @@ import {
   Divider,
   MenuItem,
   Grid,
+  CircularProgress,
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -26,6 +27,7 @@ import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import { useNavigate } from "react-router-dom";
 
 /* =========================================================
    THEME
@@ -199,7 +201,7 @@ function SectionHeader({
 
       {!editing ? (
         <Button
-          variant="text"
+          variant='text'
           startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
           onClick={onEdit}
           sx={{
@@ -289,7 +291,7 @@ function RiskChip({ risk }) {
         />
       }
       label={risk}
-      size="small"
+      size='small'
       sx={{
         height: 27,
         minWidth: 100,
@@ -321,23 +323,41 @@ function RiskChip({ risk }) {
 
 function RevaluationPeriod({ settingGetAll }) {
   const [editing, setEditing] = useState(false);
-
   const [revaluationData, setRevaluationData] = useState([]);
   const [editData, setEditData] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const periods = settingGetAll?.data?.reevaluation_periods;
 
     if (Array.isArray(periods)) {
       setRevaluationData(periods);
-      setEditData(periods.map((item) => ({ ...item })));
+
+      setEditData(
+        periods.map((item) => ({
+          ...item,
+        })),
+      );
     }
   }, [settingGetAll]);
 
+  // ==============================
+  // EDIT
+  // ==============================
   const handleEdit = () => {
-    setEditData(revaluationData.map((item) => ({ ...item })));
+    setEditData(
+      revaluationData.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(true);
   };
+
+  // ==============================
+  // VALUE CHANGE
+  // ==============================
 
   const handleValueChange = (index, value) => {
     setEditData((prev) =>
@@ -352,6 +372,9 @@ function RevaluationPeriod({ settingGetAll }) {
     );
   };
 
+  // ==============================
+  // UNIT CHANGE
+  // ==============================
   const handleUnitChange = (index, unit) => {
     setEditData((prev) =>
       prev.map((item, i) =>
@@ -365,21 +388,102 @@ function RevaluationPeriod({ settingGetAll }) {
     );
   };
 
-  const handleSave = () => {
-    setRevaluationData(editData);
-    setEditing(false);
+  // ==============================
+  // API CALL
+  // ==============================
+  const RevaluationEdit = async () => {
+    try {
+      const payload = {
+        periods: editData.map((item) => ({
+          risk_level: item.risk_level,
+          value: Number(item.value),
+          unit: item.unit,
+        })),
+
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Revaluation Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/reevaluation-periods",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(data?.detail || "Failed to update revaluation periods");
+      }
+
+      console.log("Revaluation updated successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to edit revaluation periods:", error);
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ==============================
+  // SAVE
+  // ==============================
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      await RevaluationEdit();
+
+      // Update UI only when API succeeds
+      setRevaluationData(
+        editData.map((item) => ({
+          ...item,
+          value: Number(item.value),
+        })),
+      );
+
+      setEditing(false);
+    } catch (error) {
+      console.error("Save failed:", error);
+
+      // Keep edit mode open if API fails
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ==============================
+  // CANCEL
+  // ==============================
   const handleCancel = () => {
-    setEditData(revaluationData.map((item) => ({ ...item })));
+    setEditData(
+      revaluationData.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(false);
   };
 
   return (
     <Card>
       <SectionHeader
-        title="Revaluation Period"
-        subtitle="Set the review frequency based on vendor risk level."
+        title='Revaluation Period'
+        subtitle='Set the review frequency based on vendor risk level.'
         icon={<ScheduleOutlinedIcon sx={{ fontSize: 18 }} />}
         editing={editing}
         onEdit={handleEdit}
@@ -390,18 +494,23 @@ function RevaluationPeriod({ settingGetAll }) {
       <Divider />
 
       <Table
-        size="small"
+        size='small'
         sx={{
           "& .MuiTableCell-root": {
             height: 48,
           },
+
           "& tbody tr:last-child td": {
             borderBottom: "none",
           },
         }}
       >
         <TableHead>
-          <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
+          <TableRow
+            sx={{
+              backgroundColor: "#F8FAFC",
+            }}
+          >
             <TableCell
               sx={{
                 ...bodyCellStyle,
@@ -421,96 +530,123 @@ function RevaluationPeriod({ settingGetAll }) {
             </TableCell>
           </TableRow>
         </TableHead>
-
-        <TableBody>
-          {editData.map((item, index) => (
-            <TableRow key={item.risk_level || index}>
-              <TableCell sx={bodyCellStyle}>
-                <RiskChip risk={item.risk_level} />
+        {loading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell align='center' colSpan={2}>
+                {" "}
+                <CircularProgress />
               </TableCell>
+            </TableRow>
+          </TableBody>
+        ) : (
+          <TableBody>
+            {editData.map((item, index) => (
+              <TableRow key={item.risk_level || index}>
+                {/* Risk Level */}
+                <TableCell sx={bodyCellStyle}>
+                  <RiskChip risk={item.risk_level} />
+                </TableCell>
 
-              <TableCell
-                sx={{
-                  ...bodyCellStyle,
-                  fontSize: 12,
-                }}
-              >
-                {editing ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.5,
-                      maxWidth: 320,
-                    }}
-                  >
-                    <TextField
-                      type="number"
-                      value={item.value ?? ""}
-                      onChange={(e) => handleValueChange(index, e.target.value)}
-                      size="small"
-                      inputProps={{
-                        min: 0.5,
-                        step: 0.5,
-                      }}
+                {/* Review Frequency */}
+                <TableCell
+                  sx={{
+                    ...bodyCellStyle,
+                    fontSize: 12,
+                  }}
+                >
+                  {editing ? (
+                    <Box
                       sx={{
-                        width: 70,
-                        "& .MuiOutlinedInput-root": {
-                          height: 34,
-                          fontSize: 13,
-                        },
-                        "& input": {
-                          textAlign: "center",
-                          padding: "8px 6px",
-                        },
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button":
-                          {
-                            WebkitAppearance: "none",
-                            margin: 0,
-                          },
-                        "& input[type=number]": {
-                          MozAppearance: "textfield",
-                        },
-                      }}
-                    />
-
-                    <TextField
-                      select
-                      value={item.unit ?? ""}
-                      onChange={(e) => handleUnitChange(index, e.target.value)}
-                      size="small"
-                      sx={{
-                        width: 220,
-                        "& .MuiOutlinedInput-root": {
-                          height: 34,
-                          fontSize: 13,
-                        },
-                        "& .MuiSelect-select": {
-                          display: "flex",
-                          alignItems: "center",
-                          padding: "6px 12px",
-                        },
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                        maxWidth: 320,
                       }}
                     >
-                      <MenuItem value="Months">Months</MenuItem>
-                      <MenuItem value="Years">Years</MenuItem>
-                    </TextField>
-                  </Box>
-                ) : (
-                  `${item.value} ${item.unit}`
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                      {/* VALUE */}
+                      <TextField
+                        type='number'
+                        value={item.value ?? ""}
+                        onChange={(e) =>
+                          handleValueChange(index, e.target.value)
+                        }
+                        size='small'
+                        disabled={saving}
+                        inputProps={{
+                          min: 0.5,
+                          step: 0.5,
+                        }}
+                        sx={{
+                          width: 70,
 
-          {editData.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={2} align="center">
-                No revaluation periods configured.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
+                          "& .MuiOutlinedInput-root": {
+                            height: 34,
+                            fontSize: 13,
+                          },
+
+                          "& input": {
+                            textAlign: "center",
+                            padding: "8px 6px",
+                          },
+
+                          "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button":
+                            {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+
+                          "& input[type=number]": {
+                            MozAppearance: "textfield",
+                          },
+                        }}
+                      />
+
+                      {/* UNIT */}
+                      <TextField
+                        select
+                        value={item.unit ?? ""}
+                        onChange={(e) =>
+                          handleUnitChange(index, e.target.value)
+                        }
+                        size='small'
+                        disabled={saving}
+                        sx={{
+                          width: 220,
+
+                          "& .MuiOutlinedInput-root": {
+                            height: 34,
+                            fontSize: 13,
+                          },
+
+                          "& .MuiSelect-select": {
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "6px 12px",
+                          },
+                        }}
+                      >
+                        <MenuItem value='Months'>Months</MenuItem>
+
+                        <MenuItem value='Years'>Years</MenuItem>
+                      </TextField>
+                    </Box>
+                  ) : (
+                    `${item.value} ${item.unit}`
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+
+            {editData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={2} align='center'>
+                  No revaluation periods configured.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        )}
       </Table>
     </Card>
   );
@@ -523,85 +659,332 @@ function RevaluationPeriod({ settingGetAll }) {
 function EmailRecipients({ settingGetAll }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [recipients, setRecipients] = useState([
-    { name: "Senthil", email: "senthil@hiq.com" },
-    { name: "Rajesh", email: "rajesh@hiq.com" },
-    { name: "Kannan", email: "kannan@hiq.com" },
-    { name: "Veena", email: "veena@hiq.com" },
-    { name: "Ranganathan", email: "ranganathan@hiq.com" },
-  ]);
-
-  const [editRecipients, setEditRecipients] = useState(recipients);
+  const [recipients, setRecipients] = useState([]);
+  const [editRecipients, setEditRecipients] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [newRecipient, setNewRecipient] = useState({
-    name: "",
-    email: "",
+    displayname: "",
+    emailaddress: "",
   });
 
-  // Edit
+  // ==========================================
+  // LOAD RECIPIENTS
+  // ==========================================
+  useEffect(() => {
+    const emailRecipients = settingGetAll?.data?.email_recipients;
+
+    if (Array.isArray(emailRecipients)) {
+      const copiedRecipients = emailRecipients.map((item) => ({
+        ...item,
+      }));
+
+      setRecipients(copiedRecipients);
+      setEditRecipients(copiedRecipients);
+    }
+  }, [settingGetAll]);
+
+  // ==========================================
+  // EDIT
+  // ==========================================
   const handleEdit = () => {
-    setEditRecipients(recipients);
+    setEditRecipients(
+      recipients.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(true);
   };
 
+  // ==========================================
+  // CHANGE EXISTING RECIPIENT
+  // ==========================================
   const handleChange = (index, field, value) => {
     setEditRecipients((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item,
+      ),
     );
   };
 
-  const handleSave = () => {
-    setRecipients(editRecipients);
-    setEditing(false);
+  // ==========================================
+  // SAVE EDITED RECIPIENTS
+  // ==========================================
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      for (const recipient of editRecipients) {
+        await EmailRecipientEdit(recipient);
+      }
+
+      setRecipients(
+        editRecipients.map((item) => ({
+          ...item,
+        })),
+      );
+
+      setEditing(false);
+    } catch (error) {
+      console.error("Failed to save recipient changes:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ==========================================
+  // CANCEL EDIT
+  // ==========================================
   const handleCancel = () => {
-    setEditRecipients(recipients);
+    setEditRecipients(
+      recipients.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(false);
   };
 
-  // Add recipient
-  const handleAddRecipient = () => {
-    if (!newRecipient.name.trim() || !newRecipient.email.trim()) {
+  // ==========================================
+  // OPEN ADD RECIPIENT FORM
+  // ==========================================
+  const handleOpenAdd = () => {
+    setNewRecipient({
+      displayname: "",
+      emailaddress: "",
+    });
+
+    setAdding(true);
+  };
+
+  // ==========================================
+  // ADD RECIPIENT API
+  // ==========================================
+  const EmailRecipientAdd = async () => {
+    try {
+      const payload = {
+        display_name: newRecipient.displayname.trim(),
+        email_address: newRecipient.emailaddress.trim(),
+        created_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Recipient Add Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/recipients",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(data?.detail || "Failed to add email recipient");
+      }
+
+      console.log("Recipient added successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to add email recipient:", error);
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ==========================================
+  // EDIT RECIPIENT API
+  // ==========================================
+  const EmailRecipientEdit = async (recipient) => {
+    try {
+      const payload = {
+        cc_master_id: recipient.ccmasterid,
+        display_name: recipient.displayname.trim(),
+        email_address: recipient.emailaddress.trim(),
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Recipient Edit Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/recipients/update",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(data?.detail || "Failed to edit email recipient");
+      }
+
+      console.log("Recipient edited successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to edit email recipient:", error);
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ==========================================
+  // REMOVE RECIPIENT API
+  // ==========================================
+  const EmailRecipientRemove = async (recipient) => {
+    try {
+      const payload = {
+        cc_master_id: recipient.ccmasterid,
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Remove Recipient Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/recipients/remove",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.detail || "Failed to remove email recipient");
+      }
+
+      console.log("Recipient removed successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to remove recipient:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ==========================================
+  // ADD RECIPIENT
+  // ==========================================
+  const handleAddRecipient = async () => {
+    if (!newRecipient.displayname.trim() || !newRecipient.emailaddress.trim()) {
       return;
     }
 
-    const recipient = {
-      name: newRecipient.name.trim(),
-      email: newRecipient.email.trim(),
-    };
+    try {
+      setSaving(true);
 
-    setRecipients((prev) => [...prev, recipient]);
+      const responseData = await EmailRecipientAdd();
 
-    setEditRecipients((prev) => [...prev, recipient]);
+      console.log(responseData);
 
-    setNewRecipient({
-      name: "",
-      email: "",
-    });
+      /*
+        If API returns the newly created recipient,
+        use the API response.
 
-    setAdding(false);
+        Otherwise use the values entered by the user.
+      */
+
+      const recipient = {
+        ccmasterid:
+          responseData?.ccmasterid ?? responseData?.data?.ccmasterid ?? null,
+
+        displayname:
+          responseData?.data?.displayname ?? newRecipient.displayname.trim(),
+
+        emailaddress:
+          responseData?.data?.emailaddress ?? newRecipient.emailaddress.trim(),
+      };
+
+      // update normal list
+      setRecipients((prev) => [...prev, recipient]);
+
+      // update edit list also
+      setEditRecipients((prev) => [...prev, recipient]);
+
+      // clear form
+      setNewRecipient({
+        displayname: "",
+        emailaddress: "",
+      });
+
+      setAdding(false);
+    } catch (error) {
+      console.error("Add recipient failed:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Cancel add recipient
+  // ==========================================
+  // CANCEL ADD
+  // ==========================================
   const handleCancelAdd = () => {
     setNewRecipient({
-      name: "",
-      email: "",
+      displayname: "",
+      emailaddress: "",
     });
 
     setAdding(false);
   };
 
-  // Remove recipient
-  const handleRemoveRecipient = (index) => {
-    setEditRecipients((prev) => prev.filter((_, i) => i !== index));
+  // ==========================================
+  // REMOVE FROM EDIT LIST
+  // ==========================================
+  const handleRemoveRecipient = async (index) => {
+    try {
+      const recipient = editRecipients[index];
+
+      if (!recipient) {
+        return;
+      }
+
+      await EmailRecipientRemove(recipient);
+
+      setEditRecipients((prev) => prev.filter((_, i) => i !== index));
+
+      setRecipients((prev) =>
+        prev.filter((item) => item.ccmasterid !== recipient.ccmasterid),
+      );
+    } catch (error) {
+      console.error("Remove recipient failed:", error);
+    }
   };
 
   return (
     <Card>
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <Box
         sx={{
           px: 2.5,
@@ -659,7 +1042,7 @@ function EmailRecipients({ settingGetAll }) {
           </Box>
         </Box>
 
-        {/* HEADER ACTIONS */}
+        {/* ================= HEADER ACTIONS ================= */}
         <Box
           sx={{
             display: "flex",
@@ -667,16 +1050,10 @@ function EmailRecipients({ settingGetAll }) {
             gap: 1,
           }}
         >
-          {/* ADD RECIPIENT */}
           {!editing && (
             <Button
-              onClick={() => {
-                setNewRecipient({
-                  name: "",
-                  email: "",
-                });
-                setAdding(true);
-              }}
+              onClick={handleOpenAdd}
+              disabled={adding}
               sx={{
                 minWidth: "auto",
                 px: 1.25,
@@ -686,6 +1063,7 @@ function EmailRecipients({ settingGetAll }) {
                 fontWeight: 600,
                 fontFamily: "Poppins, sans-serif",
                 borderRadius: "7px",
+
                 "&:hover": {
                   backgroundColor: "#EFF6FF",
                 },
@@ -695,10 +1073,9 @@ function EmailRecipients({ settingGetAll }) {
             </Button>
           )}
 
-          {/* EDIT */}
           {!editing ? (
             <Button
-              variant="text"
+              variant='text'
               startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
               onClick={handleEdit}
               sx={{
@@ -709,13 +1086,6 @@ function EmailRecipients({ settingGetAll }) {
                 fontSize: 12,
                 fontWeight: 600,
                 fontFamily: "Poppins, sans-serif",
-                borderRadius: "6px",
-                "&:hover": {
-                  backgroundColor: "#EFF6FF",
-                },
-                "& .MuiButton-startIcon": {
-                  marginRight: "4px",
-                },
               }}
             >
               Edit
@@ -737,7 +1107,6 @@ function EmailRecipients({ settingGetAll }) {
                   textTransform: "none",
                   fontSize: 12,
                   fontWeight: 500,
-                  fontFamily: "Poppins, sans-serif",
                 }}
               >
                 Cancel
@@ -753,7 +1122,6 @@ function EmailRecipients({ settingGetAll }) {
                   textTransform: "none",
                   fontSize: 12,
                   fontWeight: 600,
-                  fontFamily: "Poppins, sans-serif",
                 }}
               >
                 Save
@@ -765,7 +1133,7 @@ function EmailRecipients({ settingGetAll }) {
 
       <Divider />
 
-      {/* ADD RECIPIENT FORM */}
+      {/* ================= ADD RECIPIENT ================= */}
       {adding && (
         <Box
           sx={{
@@ -789,166 +1157,100 @@ function EmailRecipients({ settingGetAll }) {
           <Box
             sx={{
               display: "grid",
+
               gridTemplateColumns: {
                 xs: "1fr",
                 sm: "1fr 1.3fr auto",
               },
+
               gap: 1,
               alignItems: "center",
             }}
           >
             {/* NAME */}
             <TextField
-              value={newRecipient.name}
+              sx={{
+                "& .MuiInputBase-input": {
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "12px",
+                },
+              }}
+              value={newRecipient.displayname}
               onChange={(e) =>
                 setNewRecipient((prev) => ({
                   ...prev,
-                  name: e.target.value,
+                  displayname: e.target.value,
                 }))
               }
-              placeholder="Enter name"
-              size="small"
+              placeholder='Enter name'
+              size='small'
               fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "#fff",
-                  borderRadius: "8px",
-                  fontFamily: "Poppins, sans-serif",
-                  fontSize: 12,
-
-                  "& fieldset": {
-                    borderColor: "#CBD5E1",
-                  },
-
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#2563EB",
-                  },
-                },
-              }}
+              disabled={saving}
             />
 
             {/* EMAIL */}
             <TextField
-              value={newRecipient.email}
+              sx={{
+                "& .MuiInputBase-input": {
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "12px",
+                },
+              }}
+              value={newRecipient.emailaddress}
               onChange={(e) =>
                 setNewRecipient((prev) => ({
                   ...prev,
-                  email: e.target.value,
+                  emailaddress: e.target.value,
                 }))
               }
-              placeholder="Enter email address"
-              type="email"
-              size="small"
+              placeholder='Enter email address'
+              type='email'
+              size='small'
               fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "#fff",
-                  borderRadius: "8px",
-                  fontFamily: "Poppins, sans-serif",
-                  fontSize: 12,
-
-                  "& fieldset": {
-                    borderColor: "#CBD5E1",
-                  },
-
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#2563EB",
-                  },
-                },
-              }}
+              disabled={saving}
             />
 
-            {/* ACTION BUTTONS */}
             <Box
               sx={{
                 display: "flex",
                 gap: 1,
-                alignItems: "center",
               }}
             >
-              {/* CANCEL */}
               <Button
-                variant="outlined"
+                sx={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
+                variant='outlined'
                 onClick={handleCancelAdd}
-                sx={{
-                  minWidth: 70,
-                  height: 38,
-                  borderRadius: "8px",
-                  borderColor: "#CBD5E1",
-                  color: "#64748B",
-                  textTransform: "none",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  fontFamily: "Poppins, sans-serif",
-                  boxShadow: "none",
-
-                  "&:hover": {
-                    borderColor: "#94A3B8",
-                    backgroundColor: "#F8FAFC",
-                  },
-                }}
+                disabled={saving}
               >
                 Cancel
               </Button>
 
-              {/* ADD */}
               <Button
-                variant="contained"
+                sx={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
+                variant='contained'
                 onClick={handleAddRecipient}
                 disabled={
-                  !newRecipient.name.trim() || !newRecipient.email.trim()
+                  saving ||
+                  !newRecipient.displayname.trim() ||
+                  !newRecipient.emailaddress.trim()
                 }
-                sx={{
-                  minWidth: 70,
-                  height: 38,
-                  borderRadius: "8px",
-                  backgroundColor: "#2563EB",
-                  textTransform: "none",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fontFamily: "Poppins, sans-serif",
-                  boxShadow: "none",
-
-                  "&:hover": {
-                    backgroundColor: "#1D4ED8",
-                    boxShadow: "none",
-                  },
-                }}
               >
-                Add
+                {saving ? "Adding..." : "Add"}
               </Button>
             </Box>
           </Box>
         </Box>
       )}
 
-      {/* TABLE */}
-      <Table
-        size="small"
-        sx={{
-          "& .MuiTableCell-root": {
-            height: 48,
-            borderBottom: "1px solid #E2E8F0",
-          },
-
-          "& tbody tr:last-child td": {
-            borderBottom: "none",
-          },
-        }}
-      >
-        {/* TABLE HEADER */}
+      {/* ================= TABLE ================= */}
+      <Table size='small'>
         <TableHead>
-          <TableRow
-            sx={{
-              backgroundColor: "#F8FAFC",
-            }}
-          >
+          <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
             <TableCell
               sx={{
                 ...bodyCellStyle,
                 width: "35%",
                 fontWeight: 600,
-                color: "#475569",
               }}
             >
               Name
@@ -958,7 +1260,6 @@ function EmailRecipients({ settingGetAll }) {
               sx={{
                 ...bodyCellStyle,
                 fontWeight: 600,
-                color: "#475569",
               }}
             >
               Email Address
@@ -974,208 +1275,283 @@ function EmailRecipients({ settingGetAll }) {
             )}
           </TableRow>
         </TableHead>
-
-        {/* TABLE BODY */}
-        <TableBody>
-          {editRecipients.map((recipient, index) => (
-            <TableRow
-              key={`${recipient.email}-${index}`}
-              sx={{
-                "&:hover": {
-                  backgroundColor: "#FAFBFC",
-                },
-              }}
-            >
-              {/* NAME */}
-              <TableCell
-                sx={{
-                  ...bodyCellStyle,
-                  fontSize: 12,
-                }}
-              >
-                {editing ? (
-                  <TextField
-                    value={recipient.name}
-                    onChange={(e) =>
-                      handleChange(index, "name", e.target.value)
-                    }
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        height: 34,
-                        borderRadius: "7px",
-                        fontSize: 12,
-                        fontFamily: "Poppins, sans-serif",
-                      },
-                    }}
-                  />
-                ) : (
-                  <Typography
-                    sx={{
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "#172033",
-                      fontFamily: "Poppins, sans-serif",
-                    }}
-                  >
-                    {recipient.name}
-                  </Typography>
-                )}
-              </TableCell>
-
-              {/* EMAIL */}
-              <TableCell
-                sx={{
-                  ...bodyCellStyle,
-                  fontSize: 12,
-                }}
-              >
-                {editing ? (
-                  <TextField
-                    value={recipient.email}
-                    onChange={(e) =>
-                      handleChange(index, "email", e.target.value)
-                    }
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        height: 34,
-                        borderRadius: "7px",
-                        fontSize: 12,
-                        fontFamily: "Poppins, sans-serif",
-                      },
-                    }}
-                  />
-                ) : (
-                  <Typography
-                    sx={{
-                      fontSize: 12,
-                      color: "#64748B",
-                      fontFamily: "Poppins, sans-serif",
-                    }}
-                  >
-                    {recipient.email}
-                  </Typography>
-                )}
-              </TableCell>
-
-              {/* DELETE */}
-              {editing && (
-                <TableCell
-                  sx={{
-                    ...bodyCellStyle,
-                    textAlign: "center",
-                  }}
-                >
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveRecipient(index)}
-                    sx={{
-                      width: 30,
-                      height: 30,
-                      color: "#94A3B8",
-                      borderRadius: "6px",
-
-                      "&:hover": {
-                        color: "#DC2626",
-                        backgroundColor: "#FEF2F2",
-                      },
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-
-          {/* EMPTY STATE */}
-          {editRecipients.length === 0 && (
+        {loading ? (
+          <TableBody>
             <TableRow>
-              <TableCell
-                colSpan={editing ? 3 : 2}
-                sx={{
-                  borderBottom: "none",
-                  textAlign: "center",
-                  py: 4,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 12,
-                    color: "#94A3B8",
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  No email recipients configured.
-                </Typography>
+              <TableCell align='center' colSpan={2}>
+                {" "}
+                <CircularProgress />
               </TableCell>
             </TableRow>
-          )}
-        </TableBody>
+          </TableBody>
+        ) : (
+          <TableBody>
+            {editRecipients.map((recipient, index) => (
+              <TableRow
+                key={
+                  recipient.ccmasterid ?? `${recipient.emailaddress}-${index}`
+                }
+              >
+                {/* NAME */}
+                <TableCell sx={bodyCellStyle}>
+                  {editing ? (
+                    <TextField
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontFamily: "Poppins, sans-serif",
+                          fontSize: "12px",
+                        },
+                      }}
+                      value={recipient.displayname ?? ""}
+                      onChange={(e) =>
+                        handleChange(index, "displayname", e.target.value)
+                      }
+                      size='small'
+                      fullWidth
+                    />
+                  ) : (
+                    <Typography sx={{ fontSize: 12, fontFamily: "Poppins" }}>
+                      {recipient.displayname || "-"}
+                    </Typography>
+                  )}
+                </TableCell>
+
+                {/* EMAIL */}
+                <TableCell sx={bodyCellStyle}>
+                  {editing ? (
+                    <TextField
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontFamily: "Poppins, sans-serif",
+                          fontSize: "12px",
+                        },
+                      }}
+                      type='email'
+                      value={recipient.emailaddress ?? ""}
+                      onChange={(e) =>
+                        handleChange(index, "emailaddress", e.target.value)
+                      }
+                      size='small'
+                      fullWidth
+                    />
+                  ) : (
+                    <Typography sx={{ fontSize: 12, fontFamily: "Poppins" }}>
+                      {recipient.emailaddress || "-"}
+                    </Typography>
+                  )}
+                </TableCell>
+
+                {/* DELETE */}
+                {editing && (
+                  <TableCell
+                    sx={{
+                      ...bodyCellStyle,
+                      textAlign: "center",
+                    }}
+                  >
+                    <IconButton
+                      size='small'
+                      onClick={() => handleRemoveRecipient(index)}
+                    >
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+
+            {editRecipients.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={editing ? 3 : 2}
+                  sx={{
+                    textAlign: "center",
+                    py: 4,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      color: "#94A3B8",
+                    }}
+                  >
+                    No email recipients configured.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        )}
       </Table>
     </Card>
   );
 }
-
 /* =========================================================
    NOTIFICATION SETTINGS
 ========================================================= */
 
-function NotificationSettings() {
+function NotificationSettings({ settingGetAll }) {
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [notificationData, setNotificationData] = useState([
-    {
-      notification: "Revaluation Due",
-      notifyBefore: "1",
-    },
-    {
-      notification: "Document Expiry",
-      notifyBefore: "1",
-    },
-  ]);
+  const [notificationData, setNotificationData] = useState([]);
+  const [editData, setEditData] = useState([]);
 
-  const [editData, setEditData] = useState(notificationData);
+  // ==========================================
+  // LOAD NOTIFICATION SETTINGS
+  // ==========================================
+  useEffect(() => {
+    const notificationSetting = settingGetAll?.data?.notification_settings;
 
+    if (Array.isArray(notificationSetting)) {
+      const copiedData = notificationSetting.map((item) => ({
+        ...item,
+      }));
+
+      setNotificationData(copiedData);
+      setEditData(copiedData);
+    }
+  }, [settingGetAll]);
+
+  // ==========================================
+  // EDIT NOTIFICATION API
+  // ==========================================
+  const NotificationEdit = async () => {
+    try {
+      const payload = {
+        settings: editData.map((item) => ({
+          notification_type: item.notificationtype,
+          notify_before_value: Number(item.notifybeforevalue),
+          notify_before_unit: "Months",
+        })),
+
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Notification Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/notifications",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(
+          data?.detail || "Failed to update notification settings",
+        );
+      }
+
+      console.log("Notification updated successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to edit notification:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // EDIT
+  // ==========================================
   const handleEdit = () => {
-    setEditData(notificationData);
+    setEditData(
+      notificationData.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(true);
   };
 
+  // ==========================================
+  // CHANGE NOTIFY BEFORE VALUE
+  // ==========================================
   const handleChange = (index, value) => {
     setEditData((prev) =>
       prev.map((item, i) =>
         i === index
           ? {
               ...item,
-              notifyBefore: value,
+              notifybeforevalue: value,
             }
           : item,
       ),
     );
   };
 
-  const handleSave = () => {
-    setNotificationData(editData);
-    setEditing(false);
+  // ==========================================
+  // SAVE
+  // ==========================================
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      await NotificationEdit();
+
+      // Update frontend only after API success
+      setNotificationData(
+        editData.map((item) => ({
+          ...item,
+          notifybeforevalue: Number(item.notifybeforevalue),
+        })),
+      );
+
+      setEditData(
+        editData.map((item) => ({
+          ...item,
+          notifybeforevalue: Number(item.notifybeforevalue),
+        })),
+      );
+
+      setEditing(false);
+    } catch (error) {
+      console.error("Save failed:", error);
+
+      // stay in edit mode if API fails
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ==========================================
+  // CANCEL
+  // ==========================================
   const handleCancel = () => {
-    setEditData(notificationData);
+    setEditData(
+      notificationData.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(false);
   };
 
   return (
     <Card>
       <SectionHeader
-        title="Notification Settings"
-        subtitle="Configure when reminders should be sent."
-        icon={<NotificationsNoneOutlinedIcon sx={{ fontSize: 18 }} />}
+        title='Notification Settings'
+        subtitle='Configure when reminders should be sent.'
+        icon={
+          <NotificationsNoneOutlinedIcon
+            sx={{
+              fontSize: 18,
+            }}
+          />
+        }
         editing={editing}
         onEdit={handleEdit}
         onCancel={handleCancel}
@@ -1185,7 +1561,7 @@ function NotificationSettings() {
       <Divider />
 
       <Table
-        size="small"
+        size='small'
         sx={{
           "& .MuiTableCell-root": {
             height: 52,
@@ -1197,7 +1573,11 @@ function NotificationSettings() {
         }}
       >
         <TableHead>
-          <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
+          <TableRow
+            sx={{
+              backgroundColor: "#F8FAFC",
+            }}
+          >
             <TableCell
               sx={{
                 ...bodyCellStyle,
@@ -1218,66 +1598,104 @@ function NotificationSettings() {
             </TableCell>
           </TableRow>
         </TableHead>
-
-        <TableBody>
-          {editData.map((item, index) => (
-            <TableRow key={item.notification}>
-              <TableCell
-                sx={{
-                  ...bodyCellStyle,
-                  fontSize: 12,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  {item.notification}
-                </Typography>
-              </TableCell>
-
-              <TableCell
-                sx={{
-                  ...bodyCellStyle,
-                  fontSize: 12,
-                }}
-              >
-                {editing ? (
-                  <Grid sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <TextField
-                      value={item.notifyBefore}
-                      onChange={(e) => handleChange(index, e.target.value)}
-                      variant="outlined"
-                      size="small"
-                      fullWidth
-                      sx={{
-                        maxWidth: 180,
-                        ...inputStyle,
-                      }}
-                    />
-                    <Grid>Month</Grid>
-                  </Grid>
-                ) : (
-                  <Chip
-                    label={item.notifyBefore + "  Month"}
-                    size="small"
-                    sx={{
-                      height: 25,
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: "#475569",
-                      backgroundColor: "#F1F5F9",
-                      fontFamily: "Poppins, sans-serif",
-                    }}
-                  />
-                )}
+        {loading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell align='center' colSpan={2}>
+                {" "}
+                <CircularProgress />
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
+          </TableBody>
+        ) : (
+          <TableBody>
+            {editData.map((item, index) => (
+              <TableRow key={item.notificationsettingid ?? index}>
+                {/* NOTIFICATION TYPE */}
+                <TableCell
+                  sx={{
+                    ...bodyCellStyle,
+                    fontSize: 12,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    {item.notificationtype}
+                  </Typography>
+                </TableCell>
+
+                {/* NOTIFY BEFORE */}
+                <TableCell
+                  sx={{
+                    ...bodyCellStyle,
+                    fontSize: 12,
+                  }}
+                >
+                  {editing ? (
+                    <Grid
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                      }}
+                    >
+                      <TextField
+                        type='number'
+                        value={item.notifybeforevalue ?? ""}
+                        onChange={(e) => handleChange(index, e.target.value)}
+                        variant='outlined'
+                        size='small'
+                        disabled={saving}
+                        inputProps={{
+                          min: 0,
+                        }}
+                        fullWidth
+                        sx={{
+                          maxWidth: 180,
+                          ...inputStyle,
+                        }}
+                      />
+
+                      <Typography
+                        sx={{
+                          fontSize: 12,
+                        }}
+                      >
+                        Months
+                      </Typography>
+                    </Grid>
+                  ) : (
+                    <Chip
+                      label={`${item.notifybeforevalue} Months`}
+                      size='small'
+                      sx={{
+                        height: 25,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "#475569",
+                        backgroundColor: "#F1F5F9",
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    />
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+
+            {editData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={2} align='center'>
+                  No notification settings configured.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        )}
       </Table>
     </Card>
   );
@@ -1287,30 +1705,127 @@ function NotificationSettings() {
    EMAIL TEMPLATE
 ========================================================= */
 
-function EmailTemplate() {
+function EmailTemplate({ settingGetAll }) {
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [templateData, setTemplateData] = useState({
-    subject: "Vendor Revaluation Request – [Vendor Name]",
+  const [templateData, setTemplateData] = useState({});
+  const [editData, setEditData] = useState({});
+  const [loading, setLoading] = useState(false);
 
-    message:
-      "We are conducting a periodic revaluation of your vendor profile. Please review and provide the required information and documents through Vendor Revaluation Form.",
-  });
+  const navigate = useNavigate();
 
-  const [editData, setEditData] = useState(templateData);
+  // ==========================================
+  // LOAD EMAIL TEMPLATE
+  // ==========================================
+  useEffect(() => {
+    const template = settingGetAll?.data?.email_template;
 
+    if (template && typeof template === "object") {
+      setTemplateData({
+        ...template,
+      });
+
+      setEditData({
+        ...template,
+      });
+    }
+  }, [settingGetAll]);
+
+  // ==========================================
+  // EMAIL TEMPLATE EDIT API
+  // ==========================================
+  const EmailTemplateEdit = async () => {
+    try {
+      const payload = {
+        template_id: editData.templateid,
+        subject: editData.subject?.trim() || "",
+        email_body: editData.emailbody?.trim() || "",
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Email Template Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/email-template",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(
+          data?.detail || "Failed to update email template settings",
+        );
+      }
+
+      console.log("Email template updated successfully:", data);
+
+      return data;
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || err.message || "Login failed";
+
+      navigate("/ErrorHandling");
+      sessionStorage.setItem("errormessge", errorMessage);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // EDIT
+  // ==========================================
   const handleEdit = () => {
-    setEditData(templateData);
+    setEditData({
+      ...templateData,
+    });
+
     setEditing(true);
   };
 
-  const handleSave = () => {
-    setTemplateData(editData);
-    setEditing(false);
+  // ==========================================
+  // SAVE
+  // ==========================================
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      await EmailTemplateEdit();
+
+      // Update frontend only after API success
+      setTemplateData({
+        ...editData,
+      });
+
+      setEditing(false);
+    } catch (error) {
+      console.error("Save failed:", error);
+
+      // Keep edit mode open if API fails
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ==========================================
+  // CANCEL
+  // ==========================================
   const handleCancel = () => {
-    setEditData(templateData);
+    setEditData({
+      ...templateData,
+    });
+
     setEditing(false);
   };
 
@@ -1324,8 +1839,8 @@ function EmailTemplate() {
       }}
     >
       <SectionHeader
-        title="Email Template"
-        subtitle="Customize the email sent to vendors during revaluation."
+        title='Email Template'
+        subtitle='Customize the email sent to vendors during revaluation.'
         icon={<MailOutlineIcon sx={{ fontSize: 18 }} />}
         editing={editing}
         onEdit={handleEdit}
@@ -1334,162 +1849,230 @@ function EmailTemplate() {
       />
 
       <Divider />
-
-      <Box sx={{ p: 2.5 }}>
-        {/* SUBJECT - NOT EDITABLE */}
-        <Box sx={{ mb: 2.5 }}>
-          <Typography
-            sx={{
-              mb: 0.75,
-              fontSize: 12,
-              fontWeight: 600,
-              color: COLORS.text,
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Subject
-          </Typography>
-
-          <Box
-            sx={{
-              px: 1.5,
-              py: 1.1,
-              borderRadius: "8px",
-              border: `1px solid ${COLORS.border}`,
-              backgroundColor: "#F8FAFC",
-            }}
-          >
+      {loading ? (
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1.1,
+            borderRadius: "8px",
+            border: `1px solid ${COLORS.border}`,
+            backgroundColor: "#F8FAFC",
+            textAlign: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Box sx={{ p: 2.5 }}>
+          {/* SUBJECT */}
+          <Box sx={{ mb: 2.5 }}>
             <Typography
               sx={{
+                mb: 0.75,
                 fontSize: 12,
+                fontWeight: 600,
                 color: COLORS.text,
                 fontFamily: "Poppins, sans-serif",
               }}
             >
-              {templateData.subject}
+              Subject
             </Typography>
+
+            {/* {editing ? (
+              <TextField
+                value={editData.subject ?? ""}
+                onChange={(e) =>
+                  setEditData((prev) => ({
+                    ...prev,
+                    subject: e.target.value,
+                  }))
+                }
+                size="small"
+                fullWidth
+                disabled={saving}
+                sx={{
+                  ...inputStyle,
+                  "& .MuiInputBase-root": {
+                    fontSize: 12,
+                    fontFamily: "Poppins, sans-serif",
+                  },
+                }}
+              />
+            ) : ( */}
+            <Box
+              sx={{
+                px: 1.5,
+                py: 1.1,
+                borderRadius: "8px",
+                border: `1px solid ${COLORS.border}`,
+                backgroundColor: "#F8FAFC",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  color: COLORS.text,
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                {templateData.subject ?? "-"}
+              </Typography>
+            </Box>
+            {/* )} */}
           </Box>
-        </Box>
 
-        {/* EMAIL CONTENT */}
-        <Box>
-          <Typography
-            sx={{
-              mb: 0.75,
-              fontSize: 12,
-              fontWeight: 600,
-              color: COLORS.text,
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Email Content
-          </Typography>
-
-          <Box
-            sx={{
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: "8px",
-              backgroundColor: "#FAFBFC",
-              px: 2,
-              py: 1.75,
-            }}
-          >
-            {/* FIXED CONTENT */}
+          {/* EMAIL CONTENT */}
+          <Box>
             <Typography
               sx={{
+                mb: 0.75,
                 fontSize: 12,
-                lineHeight: 1.7,
-                color: "#334155",
+                fontWeight: 600,
+                color: COLORS.text,
                 fontFamily: "Poppins, sans-serif",
               }}
             >
-              Dear [Vendor Name],
+              Email Content
             </Typography>
 
-            <Box sx={{ my: 1.5 }}>
-              {editing ? (
-                <TextField
-                  value={editData.message}
-                  onChange={(e) =>
-                    setEditData((prev) => ({
-                      ...prev,
-                      message: e.target.value,
-                    }))
-                  }
-                  multiline
-                  minRows={3}
-                  fullWidth
-                  variant="outlined"
-                  sx={{
-                    ...inputStyle,
-
-                    "& .MuiInputBase-root": {
-                      alignItems: "flex-start",
-                      fontSize: 12,
-                      lineHeight: 1.7,
-                      fontFamily: "Poppins, sans-serif",
-                    },
-                  }}
-                />
-              ) : (
+            <Box
+              sx={{
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: "8px",
+                backgroundColor: "#FAFBFC",
+                px: 2,
+                py: 1.75,
+              }}
+            >
+              <Box sx={{ my: 1.5 }}>
                 <Typography
                   sx={{
-                    fontSize: 12,
+                    fontSize: {
+                      xs: 11,
+                      sm: 12,
+                    },
+
                     lineHeight: 1.7,
+
                     color: "#334155",
-                    whiteSpace: "pre-line",
+
                     fontFamily: "Poppins, sans-serif",
                   }}
                 >
-                  {templateData.message}
+                  Dear [Vendor Name],
                 </Typography>
-              )}
+                <Box
+                  sx={{
+                    my: {
+                      xs: 1,
+                      sm: 1.5,
+                    },
+                  }}
+                >
+                  {editing ? (
+                    <TextField
+                      value={editData.emailbody ?? ""}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          emailbody: e.target.value,
+                        }))
+                      }
+                      multiline
+                      minRows={5}
+                      fullWidth
+                      variant='outlined'
+                      disabled={saving}
+                      sx={{
+                        ...inputStyle,
+
+                        "& .MuiInputBase-root": {
+                          alignItems: "flex-start",
+                          fontSize: 12,
+                          lineHeight: 1.7,
+                          fontFamily: "Poppins, sans-serif",
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        lineHeight: 1.7,
+                        color: "#334155",
+                        whiteSpace: "pre-line",
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      {templateData.emailbody ?? "-"}
+                    </Typography>
+                  )}
+                </Box>
+                <Typography
+                  sx={{
+                    fontSize: {
+                      xs: 11,
+                      sm: 12,
+                    },
+
+                    lineHeight: 1.7,
+
+                    color: "#334155",
+
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  [Document Upload Link]
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 1.5,
+
+                    fontSize: {
+                      xs: 11,
+                      sm: 12,
+                    },
+
+                    lineHeight: 1.7,
+
+                    color: "#334155",
+
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  If you have any questions, please contact us.
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 1.5,
+
+                    fontSize: {
+                      xs: 11,
+                      sm: 12,
+                    },
+
+                    lineHeight: 1.7,
+
+                    color: "#334155",
+
+                    whiteSpace: "pre-line",
+
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  Regards,{"\n"}
+                  [Company Name]
+                </Typography>
+              </Box>
             </Box>
-
-            {/* FIXED CONTENT */}
-            <Typography
-              sx={{
-                fontSize: 12,
-                lineHeight: 1.7,
-                color: "#334155",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              [Document Upload Link]
-            </Typography>
-
-            <Typography
-              sx={{
-                mt: 1.5,
-                fontSize: 12,
-                lineHeight: 1.7,
-                color: "#334155",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              If you have any questions, please contact us.
-            </Typography>
-
-            <Typography
-              sx={{
-                mt: 1.5,
-                fontSize: 12,
-                lineHeight: 1.7,
-                color: "#334155",
-                whiteSpace: "pre-line",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              Regards,{"\n"}
-              [Company Name]
-            </Typography>
           </Box>
         </Box>
-      </Box>
+      )}
     </Card>
   );
 }
-
 /* =========================================================
    MAIN COMPONENT
 ========================================================= */
@@ -1500,7 +2083,7 @@ export default function RevaluationSetting({ onClose }) {
   const getSetting = async () => {
     try {
       const response = await fetch(
-        "http://10.10.0.115:8080/vendor-reevaluation/settings",
+        "http://10.10.0.115:8095/vendor-reevaluation/settings",
         {
           method: "GET",
           headers: {
@@ -1645,7 +2228,7 @@ export default function RevaluationSetting({ onClose }) {
 
           <IconButton
             onClick={onClose}
-            aria-label="Close"
+            aria-label='Close'
             sx={{
               width: 34,
               height: 34,

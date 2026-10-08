@@ -156,7 +156,7 @@ export default function RiskAssessment(props) {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/riskassessment/create",
+        "http://10.10.0.115:8095/riskassessment/create",
         payload,
       );
 
@@ -204,7 +204,7 @@ export default function RiskAssessment(props) {
 
   //   try {
   //     const response = await axios.post(
-  //       "http://10.50.20.89:9091/riskassessment/create",
+  //       "http://10.10.0.115:8095/riskassessment/create",
   //       payload,
   //     );
 
@@ -251,7 +251,7 @@ export default function RiskAssessment(props) {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/riskassessment/create",
+        "http://10.10.0.115:8095/riskassessment/create",
         payload,
       );
 
@@ -350,7 +350,7 @@ export default function RiskAssessment(props) {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/riskassessment/listpage",
+        "http://10.10.0.115:8095/riskassessment/listpage",
         payload,
       );
       setAllRiskAssesmentData(response.data);
@@ -386,7 +386,7 @@ export default function RiskAssessment(props) {
 
     try {
       const response = await axios.get(
-        "http://10.50.20.89:9091/vendor-groups/",
+        "http://10.10.0.115:8095/vendor-groups/",
       );
 
       setVendorGropList(response.data);

@@ -88,7 +88,7 @@ const Login = () => {
     };
 
     axios
-      .post("http://10.50.20.89:9091/auth/login", payload)
+      .post("http://10.10.0.115:8095/auth/login", payload)
       .then((res) => {
         if (!res.data.ok) {
           setLoading(false);

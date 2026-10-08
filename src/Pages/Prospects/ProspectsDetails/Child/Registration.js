@@ -63,7 +63,7 @@ export default function CompanyInfoDashboard() {
   const handleViewFile = async (attachid, attchfor, attchname, contenttype) => {
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/api/vendor-onboarding/file-content/fetch",
+        "http://10.10.0.115:8095/api/vendor-onboarding/file-content/fetch",
         {
           AttachmentId: attachid,
           ProspectId: formData?.PROSPECT_ID,

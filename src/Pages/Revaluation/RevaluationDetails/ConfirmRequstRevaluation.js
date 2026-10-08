@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   Box,
@@ -15,6 +15,7 @@ import {
   TextField,
   Divider,
   Grid,
+  CircularProgress,
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -25,6 +26,7 @@ import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import { useNavigate } from "react-router-dom";
 
 /* =========================================================
    THEME
@@ -287,7 +289,7 @@ function SectionHeader({
       {/* ACTIONS */}
       {!editing ? (
         <Button
-          variant="text"
+          variant='text'
           startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
           onClick={onEdit}
           sx={{
@@ -424,7 +426,7 @@ function RiskChip({ risk }) {
         />
       }
       label={risk}
-      size="small"
+      size='small'
       sx={{
         height: {
           xs: 24,
@@ -469,49 +471,52 @@ function RiskChip({ risk }) {
    EMAIL RECIPIENTS
 ========================================================= */
 
-function EmailRecipients() {
+function EmailRecipients({ settingGetAll }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [recipients, setRecipients] = useState([
-    {
-      name: "Senthil",
-      email: "senthil@hiq.com",
-    },
-    {
-      name: "Rajesh",
-      email: "rajesh@hiq.com",
-    },
-    {
-      name: "Kannan",
-      email: "kannan@hiq.com",
-    },
-    {
-      name: "Veena",
-      email: "veena@hiq.com",
-    },
-    {
-      name: "Ranganathan",
-      email: "ranganathan@hiq.com",
-    },
-  ]);
-
-  const [editRecipients, setEditRecipients] = useState(recipients);
+  const [recipients, setRecipients] = useState([]);
+  const [editRecipients, setEditRecipients] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [newRecipient, setNewRecipient] = useState({
-    name: "",
-    email: "",
+    displayname: "",
+    emailaddress: "",
   });
 
-  /* =====================================================
-     EDIT
-  ===================================================== */
+  // ==========================================
+  // LOAD RECIPIENTS
+  // ==========================================
+  useEffect(() => {
+    const emailRecipients = settingGetAll?.data?.email_recipients;
 
+    if (Array.isArray(emailRecipients)) {
+      const copiedRecipients = emailRecipients.map((item) => ({
+        ...item,
+      }));
+
+      setRecipients(copiedRecipients);
+      setEditRecipients(copiedRecipients);
+    }
+  }, [settingGetAll]);
+
+  // ==========================================
+  // EDIT
+  // ==========================================
   const handleEdit = () => {
-    setEditRecipients(recipients);
+    setEditRecipients(
+      recipients.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(true);
   };
 
+  // ==========================================
+  // CHANGE EXISTING RECIPIENT
+  // ==========================================
   const handleChange = (index, field, value) => {
     setEditRecipients((prev) =>
       prev.map((item, i) =>
@@ -525,216 +530,353 @@ function EmailRecipients() {
     );
   };
 
-  const handleSave = () => {
-    setRecipients(editRecipients);
-    setEditing(false);
+  // ==========================================
+  // SAVE EDITED RECIPIENTS
+  // ==========================================
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      for (const recipient of editRecipients) {
+        await EmailRecipientEdit(recipient);
+      }
+
+      setRecipients(
+        editRecipients.map((item) => ({
+          ...item,
+        })),
+      );
+
+      setEditing(false);
+    } catch (error) {
+      console.error("Failed to save recipient changes:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ==========================================
+  // CANCEL EDIT
+  // ==========================================
   const handleCancel = () => {
-    setEditRecipients(recipients);
+    setEditRecipients(
+      recipients.map((item) => ({
+        ...item,
+      })),
+    );
+
     setEditing(false);
   };
 
-  /* =====================================================
-     ADD
-  ===================================================== */
+  // ==========================================
+  // OPEN ADD RECIPIENT FORM
+  // ==========================================
+  const handleOpenAdd = () => {
+    setNewRecipient({
+      displayname: "",
+      emailaddress: "",
+    });
 
-  const handleAddRecipient = () => {
-    if (!newRecipient.name.trim() || !newRecipient.email.trim()) {
+    setAdding(true);
+  };
+
+  // ==========================================
+  // ADD RECIPIENT API
+  // ==========================================
+  const EmailRecipientAdd = async () => {
+    try {
+      const payload = {
+        display_name: newRecipient.displayname.trim(),
+        email_address: newRecipient.emailaddress.trim(),
+        created_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Recipient Add Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/recipients",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(data?.detail || "Failed to add email recipient");
+      }
+
+      console.log("Recipient added successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to add email recipient:", error);
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ==========================================
+  // EDIT RECIPIENT API
+  // ==========================================
+  const EmailRecipientEdit = async (recipient) => {
+    try {
+      const payload = {
+        cc_master_id: recipient.ccmasterid,
+        display_name: recipient.displayname.trim(),
+        email_address: recipient.emailaddress.trim(),
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Recipient Edit Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/recipients/update",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(data?.detail || "Failed to edit email recipient");
+      }
+
+      console.log("Recipient edited successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to edit email recipient:", error);
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ==========================================
+  // REMOVE RECIPIENT API
+  // ==========================================
+  const EmailRecipientRemove = async (recipient) => {
+    try {
+      const payload = {
+        cc_master_id: recipient.ccmasterid,
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Remove Recipient Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/recipients/remove",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.detail || "Failed to remove email recipient");
+      }
+
+      console.log("Recipient removed successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to remove recipient:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ==========================================
+  // ADD RECIPIENT
+  // ==========================================
+  const handleAddRecipient = async () => {
+    if (!newRecipient.displayname.trim() || !newRecipient.emailaddress.trim()) {
       return;
     }
 
-    const recipient = {
-      name: newRecipient.name.trim(),
-      email: newRecipient.email.trim(),
-    };
+    try {
+      setSaving(true);
 
-    setRecipients((prev) => [...prev, recipient]);
+      const responseData = await EmailRecipientAdd();
 
-    setEditRecipients((prev) => [...prev, recipient]);
+      console.log(responseData);
 
-    setNewRecipient({
-      name: "",
-      email: "",
-    });
+      /*
+        If API returns the newly created recipient,
+        use the API response.
+ 
+        Otherwise use the values entered by the user.
+      */
 
-    setAdding(false);
+      const recipient = {
+        ccmasterid:
+          responseData?.ccmasterid ?? responseData?.data?.ccmasterid ?? null,
+
+        displayname:
+          responseData?.data?.displayname ?? newRecipient.displayname.trim(),
+
+        emailaddress:
+          responseData?.data?.emailaddress ?? newRecipient.emailaddress.trim(),
+      };
+
+      // update normal list
+      setRecipients((prev) => [...prev, recipient]);
+
+      // update edit list also
+      setEditRecipients((prev) => [...prev, recipient]);
+
+      // clear form
+      setNewRecipient({
+        displayname: "",
+        emailaddress: "",
+      });
+
+      setAdding(false);
+    } catch (error) {
+      console.error("Add recipient failed:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ==========================================
+  // CANCEL ADD
+  // ==========================================
   const handleCancelAdd = () => {
     setNewRecipient({
-      name: "",
-      email: "",
+      displayname: "",
+      emailaddress: "",
     });
 
     setAdding(false);
   };
 
-  /* =====================================================
-     REMOVE
-  ===================================================== */
+  // ==========================================
+  // REMOVE FROM EDIT LIST
+  // ==========================================
+  const handleRemoveRecipient = async (index) => {
+    try {
+      const recipient = editRecipients[index];
 
-  const handleRemoveRecipient = (index) => {
-    setEditRecipients((prev) => prev.filter((_, i) => i !== index));
+      if (!recipient) {
+        return;
+      }
+
+      await EmailRecipientRemove(recipient);
+
+      setEditRecipients((prev) => prev.filter((_, i) => i !== index));
+
+      setRecipients((prev) =>
+        prev.filter((item) => item.ccmasterid !== recipient.ccmasterid),
+      );
+    } catch (error) {
+      console.error("Remove recipient failed:", error);
+    }
   };
 
   return (
     <Card>
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
+      {/* ================= HEADER ================= */}
       <Box
         sx={{
-          px: {
-            xs: 1.5,
-            sm: 2,
-            md: 2.5,
-          },
-
-          py: {
-            xs: 1.5,
-            sm: 2,
-          },
-
+          px: 2.5,
+          py: 2,
           display: "flex",
-
-          flexDirection: {
-            xs: "column",
-            sm: "row",
-          },
-
-          alignItems: {
-            xs: "stretch",
-            sm: "center",
-          },
-
+          alignItems: "center",
           justifyContent: "space-between",
-
-          gap: {
-            xs: 1,
-            sm: 2,
-          },
+          gap: 2,
         }}
       >
-        {/* LEFT */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-
-            gap: {
-              xs: 1,
-              sm: 1.25,
-            },
+            gap: 1.25,
           }}
         >
           <Box
             sx={{
-              width: {
-                xs: 30,
-                sm: 34,
-              },
-
-              height: {
-                xs: 30,
-                sm: 34,
-              },
-
+              width: 34,
+              height: 34,
               borderRadius: "8px",
-
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-
               backgroundColor: "#EFF6FF",
               color: "#2563EB",
-
-              flexShrink: 0,
             }}
           >
-            <GroupsOutlinedIcon
-              sx={{
-                fontSize: {
-                  xs: 16,
-                  sm: 18,
-                },
-              }}
-            />
+            <GroupsOutlinedIcon sx={{ fontSize: 18 }} />
           </Box>
 
-          <Typography
-            sx={{
-              fontSize: {
-                xs: 12,
-                sm: 13,
-                md: 14,
-              },
+          <Box>
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#172033",
+                fontFamily: "Poppins, sans-serif",
+              }}
+            >
+              Email Notification Recipients
+            </Typography>
 
-              fontWeight: 600,
-              color: "#172033",
-
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Email Notification Recipients
-          </Typography>
+            <Typography
+              sx={{
+                mt: 0.25,
+                fontSize: 11,
+                color: "#64748B",
+                fontFamily: "Poppins, sans-serif",
+              }}
+            >
+              People who receive vendor revaluation notifications.
+            </Typography>
+          </Box>
         </Box>
 
-        {/* ACTIONS */}
+        {/* ================= HEADER ACTIONS ================= */}
         <Box
           sx={{
             display: "flex",
-
-            justifyContent: {
-              xs: "flex-end",
-              sm: "initial",
-            },
-
             alignItems: "center",
-
-            flexWrap: {
-              xs: "wrap",
-              sm: "nowrap",
-            },
-
-            gap: {
-              xs: 0.5,
-              sm: 1,
-            },
+            gap: 1,
           }}
         >
           {!editing && (
             <Button
-              onClick={() => {
-                setNewRecipient({
-                  name: "",
-                  email: "",
-                });
-
-                setAdding(true);
-              }}
+              onClick={handleOpenAdd}
+              disabled={adding}
               sx={{
                 minWidth: "auto",
-
-                px: {
-                  xs: 0.75,
-                  sm: 1.25,
-                },
-
+                px: 1.25,
                 color: "#2563EB",
-
                 textTransform: "none",
-
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
+                fontSize: 12,
                 fontWeight: 600,
-
                 fontFamily: "Poppins, sans-serif",
-
                 borderRadius: "7px",
 
                 "&:hover": {
@@ -748,42 +890,17 @@ function EmailRecipients() {
 
           {!editing ? (
             <Button
-              variant="text"
-              startIcon={
-                <EditOutlinedIcon
-                  sx={{
-                    fontSize: 15,
-                  }}
-                />
-              }
+              variant='text'
+              startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
               onClick={handleEdit}
               sx={{
                 minWidth: "auto",
-
                 px: 1,
-
                 color: "#2563EB",
-
                 textTransform: "none",
-
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
+                fontSize: 12,
                 fontWeight: 600,
-
                 fontFamily: "Poppins, sans-serif",
-
-                borderRadius: "6px",
-
-                "&:hover": {
-                  backgroundColor: "#EFF6FF",
-                },
-
-                "& .MuiButton-startIcon": {
-                  marginRight: "4px",
-                },
               }}
             >
               Edit
@@ -797,30 +914,14 @@ function EmailRecipients() {
             >
               <Button
                 onClick={handleCancel}
-                startIcon={
-                  <CloseOutlinedIcon
-                    sx={{
-                      fontSize: 15,
-                    }}
-                  />
-                }
+                startIcon={<CloseOutlinedIcon sx={{ fontSize: 15 }} />}
                 sx={{
                   minWidth: "auto",
-
                   px: 1,
-
                   color: "#64748B",
-
                   textTransform: "none",
-
-                  fontSize: {
-                    xs: 11,
-                    sm: 12,
-                  },
-
+                  fontSize: 12,
                   fontWeight: 500,
-
-                  fontFamily: "Poppins, sans-serif",
                 }}
               >
                 Cancel
@@ -828,30 +929,14 @@ function EmailRecipients() {
 
               <Button
                 onClick={handleSave}
-                startIcon={
-                  <CheckIcon
-                    sx={{
-                      fontSize: 15,
-                    }}
-                  />
-                }
+                startIcon={<CheckIcon sx={{ fontSize: 15 }} />}
                 sx={{
                   minWidth: "auto",
-
                   px: 1,
-
                   color: "#2563EB",
-
                   textTransform: "none",
-
-                  fontSize: {
-                    xs: 11,
-                    sm: 12,
-                  },
-
+                  fontSize: 12,
                   fontWeight: 600,
-
-                  fontFamily: "Poppins, sans-serif",
                 }}
               >
                 Save
@@ -863,499 +948,231 @@ function EmailRecipients() {
 
       <Divider />
 
-      {/* =====================================================
-          ADD RECIPIENT FORM
-      ===================================================== */}
-
+      {/* ================= ADD RECIPIENT ================= */}
       {adding && (
         <Box
           sx={{
-            p: {
-              xs: 1.5,
-              sm: 2,
-            },
-
+            p: 2,
             backgroundColor: "#F8FAFC",
-
             borderBottom: "1px solid #E2E8F0",
           }}
         >
           <Typography
             sx={{
               mb: 1.25,
-
-              fontSize: {
-                xs: 11,
-                sm: 12,
-              },
-
+              fontSize: 12,
               fontWeight: 600,
-
               color: "#172033",
-
               fontFamily: "Poppins, sans-serif",
             }}
           >
             Add Recipient
           </Typography>
 
-          {/* =============================================
-              GRID CONTAINER
-          ============================================= */}
+          <Box
+            sx={{
+              display: "grid",
 
-          <Grid
-            container
-            spacing={{
-              xs: 1,
-              sm: 1,
-              md: 1.25,
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "1fr 1.3fr auto",
+              },
+
+              gap: 1,
+              alignItems: "center",
             }}
-            alignItems="center"
           >
             {/* NAME */}
-            <Grid
-              size={{
-                xs: 12,
-                sm: 6,
-                md: 4,
-                lg: 4,
+            <TextField
+              sx={{
+                "& .MuiInputBase-input": {
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "12px",
+                },
               }}
-            >
-              <TextField
-                value={newRecipient.name}
-                onChange={(e) =>
-                  setNewRecipient((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                placeholder="Enter name"
-                size="small"
-                fullWidth
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fff",
-
-                    borderRadius: "8px",
-
-                    fontFamily: "Poppins, sans-serif",
-
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
-
-                    "& fieldset": {
-                      borderColor: "#CBD5E1",
-                    },
-
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2563EB",
-                    },
-                  },
-                }}
-              />
-            </Grid>
+              value={newRecipient.displayname}
+              onChange={(e) =>
+                setNewRecipient((prev) => ({
+                  ...prev,
+                  displayname: e.target.value,
+                }))
+              }
+              placeholder='Enter name'
+              size='small'
+              fullWidth
+              disabled={saving}
+            />
 
             {/* EMAIL */}
-            <Grid
-              size={{
-                xs: 12,
-                sm: 6,
-                md: 5,
-                lg: 5,
+            <TextField
+              sx={{
+                "& .MuiInputBase-input": {
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "12px",
+                },
+              }}
+              value={newRecipient.emailaddress}
+              onChange={(e) =>
+                setNewRecipient((prev) => ({
+                  ...prev,
+                  emailaddress: e.target.value,
+                }))
+              }
+              placeholder='Enter email address'
+              type='email'
+              size='small'
+              fullWidth
+              disabled={saving}
+            />
+
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
               }}
             >
-              <TextField
-                value={newRecipient.email}
-                onChange={(e) =>
-                  setNewRecipient((prev) => ({
-                    ...prev,
-                    email: e.target.value,
-                  }))
-                }
-                placeholder="Enter email address"
-                type="email"
-                size="small"
-                fullWidth
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fff",
-
-                    borderRadius: "8px",
-
-                    fontFamily: "Poppins, sans-serif",
-
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
-
-                    "& fieldset": {
-                      borderColor: "#CBD5E1",
-                    },
-
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2563EB",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            {/* BUTTONS */}
-            <Grid
-              size={{
-                xs: 12,
-                sm: 12,
-                md: 3,
-                lg: 3,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-
-                  justifyContent: {
-                    xs: "flex-end",
-                    sm: "flex-end",
-                    md: "flex-start",
-                  },
-
-                  gap: 1,
-                }}
+              <Button
+                sx={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
+                variant='outlined'
+                onClick={handleCancelAdd}
+                disabled={saving}
               >
-                <Button
-                  variant="outlined"
-                  onClick={handleCancelAdd}
-                  sx={{
-                    minWidth: {
-                      xs: 64,
-                      sm: 70,
-                    },
+                Cancel
+              </Button>
 
-                    height: {
-                      xs: 34,
-                      sm: 38,
-                    },
-
-                    borderRadius: "8px",
-
-                    borderColor: "#CBD5E1",
-
-                    color: "#64748B",
-
-                    textTransform: "none",
-
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
-
-                    fontWeight: 500,
-
-                    fontFamily: "Poppins, sans-serif",
-
-                    boxShadow: "none",
-
-                    "&:hover": {
-                      borderColor: "#94A3B8",
-                      backgroundColor: "#F8FAFC",
-                    },
-                  }}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  variant="contained"
-                  onClick={handleAddRecipient}
-                  disabled={
-                    !newRecipient.name.trim() || !newRecipient.email.trim()
-                  }
-                  sx={{
-                    minWidth: {
-                      xs: 64,
-                      sm: 70,
-                    },
-
-                    height: {
-                      xs: 34,
-                      sm: 38,
-                    },
-
-                    borderRadius: "8px",
-
-                    backgroundColor: "#2563EB",
-
-                    textTransform: "none",
-
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
-
-                    fontWeight: 600,
-
-                    fontFamily: "Poppins, sans-serif",
-
-                    boxShadow: "none",
-
-                    "&:hover": {
-                      backgroundColor: "#1D4ED8",
-                      boxShadow: "none",
-                    },
-                  }}
-                >
-                  Add
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
+              <Button
+                sx={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
+                variant='contained'
+                onClick={handleAddRecipient}
+                disabled={
+                  saving ||
+                  !newRecipient.displayname.trim() ||
+                  !newRecipient.emailaddress.trim()
+                }
+              >
+                {saving ? "Adding..." : "Add"}
+              </Button>
+            </Box>
+          </Box>
         </Box>
       )}
 
-      {/* =====================================================
-          TABLE
-      ===================================================== */}
-
-      <Box
-        sx={{
-          width: "100%",
-
-          overflowX: {
-            xs: "auto",
-            sm: "auto",
-            md: "visible",
-          },
-        }}
-      >
-        <Table
-          size="small"
-          sx={{
-            minWidth: {
-              xs: editing ? 520 : 420,
-              sm: editing ? 520 : 450,
-              md: "100%",
-            },
-
-            "& .MuiTableCell-root": {
-              height: {
-                xs: 44,
-                sm: 48,
-              },
-
-              borderBottom: "1px solid #E2E8F0",
-            },
-
-            "& tbody tr:last-child td": {
-              borderBottom: "none",
-            },
-          }}
-        >
-          <TableHead>
-            <TableRow
+      {/* ================= TABLE ================= */}
+      <Table size='small'>
+        <TableHead>
+          <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
+            <TableCell
               sx={{
-                backgroundColor: "#F8FAFC",
+                ...bodyCellStyle,
+                width: "35%",
+                fontWeight: 600,
               }}
             >
+              Name
+            </TableCell>
+
+            <TableCell
+              sx={{
+                ...bodyCellStyle,
+                fontWeight: 600,
+              }}
+            >
+              Email Address
+            </TableCell>
+
+            {editing && (
               <TableCell
                 sx={{
                   ...bodyCellStyle,
-
-                  width: "35%",
-
-                  fontWeight: 600,
-
-                  color: "#475569",
+                  width: 70,
                 }}
-              >
-                Name
+              />
+            )}
+          </TableRow>
+        </TableHead>
+        {loading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell align='center' colSpan={2}>
+                {" "}
+                <CircularProgress />
               </TableCell>
-
-              <TableCell
-                sx={{
-                  ...bodyCellStyle,
-
-                  fontWeight: 600,
-
-                  color: "#475569",
-                }}
-              >
-                Email Address
-              </TableCell>
-
-              {editing && (
-                <TableCell
-                  sx={{
-                    ...bodyCellStyle,
-
-                    width: {
-                      xs: 50,
-                      sm: 70,
-                    },
-                  }}
-                />
-              )}
             </TableRow>
-          </TableHead>
-
+          </TableBody>
+        ) : (
           <TableBody>
             {editRecipients.map((recipient, index) => (
               <TableRow
-                key={`${recipient.email}-${index}`}
-                sx={{
-                  "&:hover": {
-                    backgroundColor: "#FAFBFC",
-                  },
-                }}
+                key={
+                  recipient.ccmasterid ?? `${recipient.emailaddress}-${index}`
+                }
               >
                 {/* NAME */}
-                <TableCell
-                  sx={{
-                    ...bodyCellStyle,
-                  }}
-                >
+                <TableCell sx={bodyCellStyle}>
                   {editing ? (
                     <TextField
-                      value={recipient.name}
-                      onChange={(e) =>
-                        handleChange(index, "name", e.target.value)
-                      }
-                      variant="outlined"
-                      size="small"
-                      fullWidth
                       sx={{
-                        "& .MuiOutlinedInput-root": {
-                          height: {
-                            xs: 32,
-                            sm: 34,
-                          },
-
-                          borderRadius: "7px",
-
-                          fontSize: {
-                            xs: 11,
-                            sm: 12,
-                          },
-
+                        "& .MuiInputBase-input": {
                           fontFamily: "Poppins, sans-serif",
+                          fontSize: "12px",
                         },
                       }}
+                      value={recipient.displayname ?? ""}
+                      onChange={(e) =>
+                        handleChange(index, "displayname", e.target.value)
+                      }
+                      size='small'
+                      fullWidth
                     />
                   ) : (
                     <Typography
-                      sx={{
-                        fontSize: {
-                          xs: 11,
-                          sm: 12,
-                        },
-
-                        fontWeight: 500,
-
-                        color: "#172033",
-
-                        fontFamily: "Poppins, sans-serif",
-                      }}
+                      sx={{ fontSize: 12, fontFamily: "Poppins, sans-serif" }}
                     >
-                      {recipient.name}
+                      {recipient.displayname || "-"}
                     </Typography>
                   )}
                 </TableCell>
 
                 {/* EMAIL */}
-                <TableCell
-                  sx={{
-                    ...bodyCellStyle,
-                  }}
-                >
+                <TableCell sx={bodyCellStyle}>
                   {editing ? (
                     <TextField
-                      value={recipient.email}
-                      onChange={(e) =>
-                        handleChange(index, "email", e.target.value)
-                      }
-                      variant="outlined"
-                      size="small"
-                      fullWidth
                       sx={{
-                        "& .MuiOutlinedInput-root": {
-                          height: {
-                            xs: 32,
-                            sm: 34,
-                          },
-
-                          borderRadius: "7px",
-
-                          fontSize: {
-                            xs: 11,
-                            sm: 12,
-                          },
-
+                        "& .MuiInputBase-input": {
                           fontFamily: "Poppins, sans-serif",
+                          fontSize: "12px",
                         },
                       }}
+                      type='email'
+                      value={recipient.emailaddress ?? ""}
+                      onChange={(e) =>
+                        handleChange(index, "emailaddress", e.target.value)
+                      }
+                      size='small'
+                      fullWidth
                     />
                   ) : (
                     <Typography
-                      sx={{
-                        fontSize: {
-                          xs: 10.5,
-                          sm: 12,
-                        },
-
-                        color: "#64748B",
-
-                        fontFamily: "Poppins, sans-serif",
-                      }}
+                      sx={{ fontSize: 12, fontFamily: "Poppins, sans-serif" }}
                     >
-                      {recipient.email}
+                      {recipient.emailaddress || "-"}
                     </Typography>
                   )}
                 </TableCell>
 
-                {/* REMOVE */}
+                {/* DELETE */}
                 {editing && (
                   <TableCell
                     sx={{
                       ...bodyCellStyle,
-
                       textAlign: "center",
                     }}
                   >
                     <IconButton
-                      size="small"
+                      size='small'
                       onClick={() => handleRemoveRecipient(index)}
-                      sx={{
-                        width: {
-                          xs: 27,
-                          sm: 30,
-                        },
-
-                        height: {
-                          xs: 27,
-                          sm: 30,
-                        },
-
-                        color: "#94A3B8",
-
-                        borderRadius: "6px",
-
-                        "&:hover": {
-                          color: "#DC2626",
-
-                          backgroundColor: "#FEF2F2",
-                        },
-                      }}
                     >
-                      <CloseIcon
-                        sx={{
-                          fontSize: {
-                            xs: 14,
-                            sm: 16,
-                          },
-                        }}
-                      />
+                      <CloseIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </TableCell>
                 )}
@@ -1367,26 +1184,14 @@ function EmailRecipients() {
                 <TableCell
                   colSpan={editing ? 3 : 2}
                   sx={{
-                    borderBottom: "none",
-
                     textAlign: "center",
-
-                    py: {
-                      xs: 3,
-                      sm: 4,
-                    },
+                    py: 4,
                   }}
                 >
                   <Typography
                     sx={{
-                      fontSize: {
-                        xs: 11,
-                        sm: 12,
-                      },
-
+                      fontSize: 12,
                       color: "#94A3B8",
-
-                      fontFamily: "Poppins, sans-serif",
                     }}
                   >
                     No email recipients configured.
@@ -1395,8 +1200,8 @@ function EmailRecipients() {
               </TableRow>
             )}
           </TableBody>
-        </Table>
-      </Box>
+        )}
+      </Table>
     </Card>
   );
 }
@@ -1405,47 +1210,143 @@ function EmailRecipients() {
    EMAIL TEMPLATE
 ========================================================= */
 
-function EmailTemplate() {
+function EmailTemplate({ settingGetAll }) {
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [templateData, setTemplateData] = useState({
-    subject: "Vendor Revaluation Request – [Vendor Name]",
+  const [templateData, setTemplateData] = useState({});
+  const [editData, setEditData] = useState({});
+  const [loading, setLoading] = useState(false);
 
-    message:
-      "We are conducting a periodic revaluation of your vendor profile. Please review and provide the required information and documents through Vendor Revaluation Form.",
-  });
+  const navigate = useNavigate();
 
-  const [editData, setEditData] = useState(templateData);
+  // ==========================================
+  // LOAD EMAIL TEMPLATE
+  // ==========================================
+  useEffect(() => {
+    const template = settingGetAll?.data?.email_template;
 
+    if (template && typeof template === "object") {
+      setTemplateData({
+        ...template,
+      });
+
+      setEditData({
+        ...template,
+      });
+    }
+  }, [settingGetAll]);
+
+  // ==========================================
+  // EMAIL TEMPLATE EDIT API
+  // ==========================================
+  const EmailTemplateEdit = async () => {
+    try {
+      const payload = {
+        template_id: editData.templateid,
+        subject: editData.subject?.trim() || "",
+        email_body: editData.emailbody?.trim() || "",
+        modified_by: sessionStorage.getItem("UserId"),
+      };
+
+      console.log("Email Template Payload:", payload);
+
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings/email-template",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        setLoading(true),
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", data);
+
+        throw new Error(
+          data?.detail || "Failed to update email template settings",
+        );
+      }
+
+      console.log("Email template updated successfully:", data);
+
+      return data;
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || err.message || "Login failed";
+
+      navigate("/ErrorHandling");
+      sessionStorage.setItem("errormessge", errorMessage);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // EDIT
+  // ==========================================
   const handleEdit = () => {
-    setEditData(templateData);
+    setEditData({
+      ...templateData,
+    });
 
     setEditing(true);
   };
 
-  const handleSave = () => {
-    setTemplateData(editData);
+  // ==========================================
+  // SAVE
+  // ==========================================
+  const handleSave = async () => {
+    try {
+      setSaving(true);
 
-    setEditing(false);
+      await EmailTemplateEdit();
+
+      // Update frontend only after API success
+      setTemplateData({
+        ...editData,
+      });
+
+      setEditing(false);
+    } catch (error) {
+      console.error("Save failed:", error);
+
+      // Keep edit mode open if API fails
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ==========================================
+  // CANCEL
+  // ==========================================
   const handleCancel = () => {
-    setEditData(templateData);
+    setEditData({
+      ...templateData,
+    });
 
     setEditing(false);
   };
 
   return (
-    <Card>
+    <Card
+      sx={{
+        gridColumn: {
+          xs: "auto",
+          md: "1 / -1",
+        },
+      }}
+    >
       <SectionHeader
-        title="Email Preview"
-        icon={
-          <MailOutlineIcon
-            sx={{
-              fontSize: 18,
-            }}
-          />
-        }
+        title='Email Template'
+        subtitle='Customize the email sent to vendors during revaluation.'
+        icon={<MailOutlineIcon sx={{ fontSize: 18 }} />}
         editing={editing}
         onEdit={handleEdit}
         onCancel={handleCancel}
@@ -1453,197 +1354,205 @@ function EmailTemplate() {
       />
 
       <Divider />
-
-      <Box
-        sx={{
-          p: {
-            xs: 1.5,
-            sm: 2,
-            md: 2.5,
-          },
-        }}
-      >
-        {/* =================================================
-            SUBJECT
-        ================================================= */}
-
+      {loading ? (
         <Box
           sx={{
-            mb: {
-              xs: 2,
-              sm: 2.5,
-            },
+            px: 1.5,
+            py: 1.1,
+            borderRadius: "8px",
+            border: `1px solid ${COLORS.border}`,
+            backgroundColor: "#F8FAFC",
+            textAlign: "center",
           }}
         >
-          <Typography
-            sx={{
-              mb: 0.75,
-
-              fontSize: {
-                xs: 11,
-                sm: 12,
-              },
-
-              fontWeight: 600,
-
-              color: COLORS.text,
-
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Subject
-          </Typography>
-
-          <Box
-            sx={{
-              px: {
-                xs: 1,
-                sm: 1.5,
-              },
-
-              py: {
-                xs: 1,
-                sm: 1.1,
-              },
-
-              borderRadius: "8px",
-
-              border: `1px solid ${COLORS.border}`,
-
-              backgroundColor: "#F8FAFC",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
-                color: COLORS.text,
-
-                fontFamily: "Poppins, sans-serif",
-
-                wordBreak: "break-word",
-              }}
-            >
-              {templateData.subject}
-            </Typography>
-          </Box>
+          <CircularProgress />
         </Box>
-
-        {/* =================================================
-            EMAIL CONTENT
-        ================================================= */}
-
-        <Box>
-          <Typography
-            sx={{
-              mb: 0.75,
-
-              fontSize: {
-                xs: 11,
-                sm: 12,
-              },
-
-              fontWeight: 600,
-
-              color: COLORS.text,
-
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Email Content
-          </Typography>
-
-          <Box
-            sx={{
-              border: `1px solid ${COLORS.border}`,
-
-              borderRadius: "8px",
-
-              backgroundColor: "#FAFBFC",
-
-              px: {
-                xs: 1.25,
-                sm: 2,
-              },
-
-              py: {
-                xs: 1.25,
-                sm: 1.75,
-              },
-            }}
-          >
+      ) : (
+        <Box sx={{ p: 2.5 }}>
+          {/* SUBJECT */}
+          <Box sx={{ mb: 2.5 }}>
             <Typography
               sx={{
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
-                lineHeight: 1.7,
-
-                color: "#334155",
-
+                mb: 0.75,
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.text,
                 fontFamily: "Poppins, sans-serif",
               }}
             >
-              Dear [Vendor Name],
+              Subject
+            </Typography>
+
+            {/* {editing ? (
+              <TextField
+                value={editData.subject ?? ""}
+                onChange={(e) =>
+                  setEditData((prev) => ({
+                    ...prev,
+                    subject: e.target.value,
+                  }))
+                }
+                size="small"
+                fullWidth
+                disabled={saving}
+                sx={{
+                  ...inputStyle,
+                  "& .MuiInputBase-root": {
+                    fontSize: 12,
+                    fontFamily: "Poppins, sans-serif",
+                  },
+                }}
+              />
+            ) : ( */}
+            <Box
+              sx={{
+                px: 1.5,
+                py: 1.1,
+                borderRadius: "8px",
+                border: `1px solid ${COLORS.border}`,
+                backgroundColor: "#F8FAFC",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  color: COLORS.text,
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                {templateData.subject ?? "-"}
+              </Typography>
+            </Box>
+            {/* )} */}
+          </Box>
+
+          {/* EMAIL CONTENT */}
+          <Box>
+            <Typography
+              sx={{
+                mb: 0.75,
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.text,
+                fontFamily: "Poppins, sans-serif",
+              }}
+            >
+              Email Content
             </Typography>
 
             <Box
               sx={{
-                my: {
-                  xs: 1,
-                  sm: 1.5,
-                },
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: "8px",
+                backgroundColor: "#FAFBFC",
+                px: 2,
+                py: 1.75,
               }}
             >
-              {editing ? (
-                <Grid container spacing={1}>
-                  <Grid
-                    size={{
-                      xs: 12,
+              <Box sx={{ my: 1.5 }}>
+                <Typography
+                  sx={{
+                    fontSize: {
+                      xs: 11,
                       sm: 12,
-                      md: 12,
-                      lg: 12,
-                    }}
-                  >
+                    },
+
+                    lineHeight: 1.7,
+
+                    color: "#334155",
+
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  Dear [Vendor Name],
+                </Typography>
+                <Box
+                  sx={{
+                    my: {
+                      xs: 1,
+                      sm: 1.5,
+                    },
+                  }}
+                >
+                  {editing ? (
                     <TextField
-                      value={editData.message}
+                      value={editData.emailbody ?? ""}
                       onChange={(e) =>
                         setEditData((prev) => ({
                           ...prev,
-                          message: e.target.value,
+                          emailbody: e.target.value,
                         }))
                       }
                       multiline
-                      minRows={3}
+                      minRows={5}
                       fullWidth
-                      variant="outlined"
+                      variant='outlined'
+                      disabled={saving}
                       sx={{
                         ...inputStyle,
 
                         "& .MuiInputBase-root": {
                           alignItems: "flex-start",
-
-                          fontSize: {
-                            xs: 11,
-                            sm: 12,
-                          },
-
+                          fontSize: 12,
                           lineHeight: 1.7,
-
                           fontFamily: "Poppins, sans-serif",
                         },
                       }}
                     />
-                  </Grid>
-                </Grid>
-              ) : (
+                  ) : (
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        lineHeight: 1.7,
+                        color: "#334155",
+                        whiteSpace: "pre-line",
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      {templateData.emailbody ?? "-"}
+                    </Typography>
+                  )}
+                </Box>
                 <Typography
                   sx={{
+                    fontSize: {
+                      xs: 11,
+                      sm: 12,
+                    },
+
+                    lineHeight: 1.7,
+
+                    color: "#334155",
+
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  [Document Upload Link]
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 1.5,
+
+                    fontSize: {
+                      xs: 11,
+                      sm: 12,
+                    },
+
+                    lineHeight: 1.7,
+
+                    color: "#334155",
+
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  If you have any questions, please contact us.
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 1.5,
+
                     fontSize: {
                       xs: 11,
                       sm: 12,
@@ -1658,71 +1567,14 @@ function EmailTemplate() {
                     fontFamily: "Poppins, sans-serif",
                   }}
                 >
-                  {templateData.message}
+                  Regards,{"\n"}
+                  [Company Name]
                 </Typography>
-              )}
+              </Box>
             </Box>
-
-            <Typography
-              sx={{
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
-                lineHeight: 1.7,
-
-                color: "#334155",
-
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              [Document Upload Link]
-            </Typography>
-
-            <Typography
-              sx={{
-                mt: 1.5,
-
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
-                lineHeight: 1.7,
-
-                color: "#334155",
-
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              If you have any questions, please contact us.
-            </Typography>
-
-            <Typography
-              sx={{
-                mt: 1.5,
-
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-
-                lineHeight: 1.7,
-
-                color: "#334155",
-
-                whiteSpace: "pre-line",
-
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              Regards,{"\n"}
-              [Company Name]
-            </Typography>
           </Box>
         </Box>
-      </Box>
+      )}
     </Card>
   );
 }
@@ -1731,7 +1583,34 @@ function EmailTemplate() {
    MAIN COMPONENT
 ========================================================= */
 
-export default function ConfirmRequstRevaluation({ onClose }) {
+export default function ConfirmRequstRevaluation({ onClose, allSelected }) {
+  const [settingGetAll, setSettingGetAll] = useState(null);
+
+  const getSetting = async () => {
+    try {
+      const response = await fetch(
+        "http://10.10.0.115:8095/vendor-reevaluation/settings",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = await response.json();
+      setSettingGetAll(data);
+      return data;
+    } catch (error) {
+      console.error("Failed to get settings:", error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    getSetting();
+  }, []);
+
   return (
     <Box
       sx={{
@@ -1928,7 +1807,7 @@ export default function ConfirmRequstRevaluation({ onClose }) {
           {/* CLOSE */}
           <IconButton
             onClick={onClose}
-            aria-label="Close"
+            aria-label='Close'
             sx={{
               width: {
                 xs: 30,
@@ -2022,7 +1901,7 @@ export default function ConfirmRequstRevaluation({ onClose }) {
             md: 2,
             lg: 2,
           }}
-          alignItems="stretch"
+          alignItems='stretch'
         >
           {/* EMAIL RECIPIENTS */}
           <Grid
@@ -2033,7 +1912,7 @@ export default function ConfirmRequstRevaluation({ onClose }) {
               lg: 6,
             }}
           >
-            <EmailRecipients />
+            <EmailRecipients settingGetAll={settingGetAll} />
           </Grid>
 
           {/* EMAIL TEMPLATE */}
@@ -2045,7 +1924,7 @@ export default function ConfirmRequstRevaluation({ onClose }) {
               lg: 6,
             }}
           >
-            <EmailTemplate />
+            <EmailTemplate settingGetAll={settingGetAll} />
           </Grid>
         </Grid>
 
@@ -2055,7 +1934,7 @@ export default function ConfirmRequstRevaluation({ onClose }) {
 
         <Grid
           container
-          justifyContent="center"
+          justifyContent='center'
           spacing={{
             xs: 1,
             sm: 1.5,
@@ -2139,7 +2018,7 @@ export default function ConfirmRequstRevaluation({ onClose }) {
           >
             <Button
               onClick={onClose}
-              variant="outlined"
+              variant='outlined'
               fullWidth
               sx={{
                 width: {

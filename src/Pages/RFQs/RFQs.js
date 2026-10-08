@@ -270,7 +270,7 @@ export default function RFQs() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/vendorkpi/vendorrfqkpi",
+        "http://10.10.0.115:8095/vendorkpi/vendorrfqkpi",
         payload,
       );
 
@@ -403,15 +403,15 @@ export default function RFQs() {
     try {
       const res = await axios.post(
         activeTab === "All"
-          ? "http://10.50.20.89:9091/rfq/cases"
+          ? "http://10.10.0.115:8095/rfq/cases"
           : activeTab === "On Bidding"
-            ? "http://10.50.20.89:9091/RFQ/rfq/casesonbid"
+            ? "http://10.10.0.115:8095/RFQ/rfq/casesonbid"
             : activeTab === "Under Review"
-              ? "http://10.50.20.89:9091/RFQ/rfq/casesunderreview"
+              ? "http://10.10.0.115:8095/RFQ/rfq/casesunderreview"
               : activeTab === "Closed"
-                ? "http://10.50.20.89:9091/RFQ/rfq/casesclosed"
+                ? "http://10.10.0.115:8095/RFQ/rfq/casesclosed"
                 : activeTab === "Expired"
-                  ? "http://10.50.20.89:9091/RFQ/rfq/casesexpired"
+                  ? "http://10.10.0.115:8095/RFQ/rfq/casesexpired"
                   : "",
         payload,
       );

@@ -105,7 +105,7 @@ export default function ProspectsTop(props) {
 
   const getTablePurchaseOrder = async () => {
     try {
-      const res = await axios.get(" http://10.50.20.89:9091/kpi/dashboard");
+      const res = await axios.get(" http://10.10.0.115:8095/kpi/dashboard");
 
       console.log(res.data);
       setKpi(res.data.data);

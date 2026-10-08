@@ -106,7 +106,7 @@ export default function VendorTop(props) {
   const getTablePurchaseOrder = async () => {
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/vendorkpi/vendordashkpi",
+        "http://10.10.0.115:8095/vendorkpi/vendordashkpi",
       );
 
       console.log(res.data);

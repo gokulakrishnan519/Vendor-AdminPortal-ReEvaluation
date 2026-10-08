@@ -94,7 +94,7 @@ const Review = (props) => {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/review/approvalreviewupdate",
+        "http://10.10.0.115:8095/review/approvalreviewupdate",
         payload,
       );
 
@@ -126,7 +126,7 @@ const Review = (props) => {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/review/approvalist",
+        "http://10.10.0.115:8095/review/approvalist",
         payload,
       );
 

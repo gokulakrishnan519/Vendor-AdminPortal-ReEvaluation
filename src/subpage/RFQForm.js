@@ -276,7 +276,7 @@ export default function RFQForm() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/rfqfetch/rfq-detail",
+        "http://10.10.0.115:8095/rfqfetch/rfq-detail",
         payload,
       );
 
@@ -315,7 +315,7 @@ export default function RFQForm() {
   const getMasterList = async () => {
     setLoading(true);
     try {
-      const res = await axios.post("http://10.50.20.89:9091/dropdown/list");
+      const res = await axios.post("http://10.10.0.115:8095/dropdown/list");
 
       console.log(res.data);
 
@@ -430,7 +430,7 @@ export default function RFQForm() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/rfq/reply",
+        "http://10.10.0.115:8095/rfq/reply",
         payload,
       );
 

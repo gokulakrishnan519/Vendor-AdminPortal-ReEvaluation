@@ -514,15 +514,15 @@ export default function RFQDetails() {
     try {
       const res = await axios.post(
         tabName == "All"
-          ? "http://10.50.20.89:9091/rfq/case"
+          ? "http://10.10.0.115:8095/rfq/case"
           : tabName == "On Bidding"
-            ? "http://10.50.20.89:9091/RFQ/rfq/Vendoronbid"
+            ? "http://10.10.0.115:8095/RFQ/rfq/Vendoronbid"
             : tabName == "Under Review"
-              ? "http://10.50.20.89:9091/RFQ/rfq/vendorunderreview"
+              ? "http://10.10.0.115:8095/RFQ/rfq/vendorunderreview"
               : tabName == "Closed"
-                ? "http://10.50.20.89:9091/RFQ/rfq/vendorexpired"
+                ? "http://10.10.0.115:8095/RFQ/rfq/vendorexpired"
                 : tabName == "Expired"
-                  ? "http://10.50.20.89:9091/RFQ/rfq/vendorexpired"
+                  ? "http://10.10.0.115:8095/RFQ/rfq/vendorexpired"
                   : "",
         payload,
       );

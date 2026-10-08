@@ -214,10 +214,10 @@ export default function CompletedRFQsForm() {
     try {
       const res = await axios.post(
         sessionStorage.getItem("fromtab") == "Completed Bid Status"
-          ? "http://10.50.20.89:9091/rfq/completed-detail"
+          ? "http://10.10.0.115:8095/rfq/completed-detail"
           : sessionStorage.getItem("fromtab") == "Expired"
-            ? "http://10.50.20.89:9091/expiry/expired-detail"
-            : "http://10.50.20.89:9091/sub/completed-detail",
+            ? "http://10.10.0.115:8095/expiry/expired-detail"
+            : "http://10.10.0.115:8095/sub/completed-detail",
         payload,
       );
 

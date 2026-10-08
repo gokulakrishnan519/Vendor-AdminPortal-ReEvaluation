@@ -14,7 +14,7 @@ import {
 
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import Navbar from "../../../Navbars/Navbar";
-import Registration from "./Child/Overview";
+import Overview from "./Child/Overview";
 import Documents from "./Child/Documents";
 import RiskAssesment from "./Child/RiskAssesment";
 import RevaluationProfile from "./Child/RevaluationProfile";
@@ -33,7 +33,7 @@ import axios from "axios";
 import UserContext from "../../../UseContext/UserContext";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { IconButton } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Loading from "../../../Loading/Loading";
 
 const FONT = "'Poppins', sans-serif";
@@ -65,11 +65,99 @@ const theme = createTheme({
   },
 });
 
+const statusColors = {
+  "Not Started": {
+    bg: "#EAE7FF",
+    color: "#725CFC",
+  },
+  "Awaiting Response": {
+    bg: "#FEF0DA",
+    color: "#F99709",
+  },
+  "Validation In Progress": {
+    bg: "#E8EDFF",
+    color: "#6788FF",
+  },
+  Returned: {
+    bg: "#E8EDFF",
+    color: "#6788FF",
+  },
+  Completed: {
+    bg: "#DEF6F2",
+    color: "#21BFA7",
+  },
+  Cancelled: {
+    bg: "#FBE3EA",
+    color: "#E34472",
+  },
+};
+
+const statusLabels = {
+  "Not Started": "Not Started",
+  "Awaiting Response": "Awaiting Response",
+  "Validation In Progress": "Validation In Progress",
+  Returned: "Returned",
+  Completed: "Completed",
+  Cancelled: "Cancelled",
+};
+
+const riskColors = {
+  Critical: {
+    bg: "#FBE3EA",
+    color: "#D32F5B",
+  },
+  High: {
+    bg: "#FDE7E7",
+    color: "#E53935",
+  },
+  Elevated: {
+    bg: "#FEF0DA",
+    color: "#F99709",
+  },
+  Medium: {
+    bg: "#FFF8E1",
+    color: "#C79A00",
+  },
+  Low: {
+    bg: "#DEF6F2",
+    color: "#21BFA7",
+  },
+};
+
+const riskLabels = {
+  Critical: "Critical",
+  High: "High",
+  Elevated: "Elevated",
+  Medium: "Medium",
+  Low: "Low",
+};
+
+const chipStyle = {
+  height: "22px",
+  fontSize: "11px",
+  minWidth: "75px",
+  fontWeight: 500,
+  fontFamily: "Poppins, sans-serif",
+  "& .MuiChip-label": {
+    px: "6px",
+  },
+};
+
 export default function ParentReevaluation() {
   const [tab, setTab] = React.useState(0);
   const [activeTab, setActiveTab] = useState("Registration Forms");
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
+
+  const location = useLocation();
+
+  const { riskLevel, lastreevaluation, nextreevaluationdate, status } =
+    location.state || {};
+
+  console.log("Risk Level:", riskLevel);
+  console.log("Last Reevaluation:", lastreevaluation);
+  console.log("Next Reevaluation:", nextreevaluationdate);
+  console.log("Status:", status);
 
   const navigate = useNavigate();
 
@@ -115,7 +203,7 @@ export default function ParentReevaluation() {
 
     try {
       const response = await axios.post(
-        "http://10.50.20.89:9091/api/vendor-onboarding/fetch",
+        "http://10.10.0.115:8095/api/vendor-onboarding/fetch",
         payload,
         {
           headers: {
@@ -282,75 +370,29 @@ export default function ParentReevaluation() {
     getProspectorData();
   }, []);
 
-  const statusColors = {
-    INVITED: {
-      bg: "#E8EDFF",
-      color: "#6788FF",
-    },
-    DRAFT: {
-      bg: "#F5F5F5",
-      color: "#616161",
-    },
-    TO_EVALUATE: {
-      bg: "#FEF0DA",
-      color: "#F99709",
-    },
-    IN_APPROVAL: {
-      bg: "#EAE7FF",
-      color: "#725CFC",
-    },
-    RETURNED: {
-      bg: "#EEF0F0",
-      color: "#8E9696",
-    },
-    RESUBMITTED: {
-      bg: "#E8EDFF",
-      color: "#6788FF",
-    },
-    APPROVED: {
-      bg: "#DEF6F2",
-      color: "#21BFA7",
-    },
-    REJECTED: {
-      bg: "#FBE3EA",
-      color: "#E34472",
-    },
-    VENDOR_CREATED: {
-      bg: "#E0F7FA",
-      color: "#00838F",
-    },
-  };
+  // const getActiveStep = (status) => {
+  //   switch (status) {
+  //     case "INVITED":
+  //     case "DRAFT":
+  //       return 0; // Registration
 
-  const chipStyle = statusColors[formData?.STATUS] || {
-    bg: "#ECEFF1",
-    color: "#455A64",
-  };
+  //     case "TO_EVALUATE":
+  //       return 1; // Evaluation
 
-  const getActiveStep = (status) => {
-    switch (status) {
-      case "INVITED":
-      case "DRAFT":
-        return 0; // Registration
+  //     case "IN_APPROVAL":
+  //     case "RETURNED":
+  //     case "RESUBMITTED":
+  //     case "APPROVED":
+  //     case "REJECTED":
+  //       return 2; // Approvals
 
-      case "TO_EVALUATE":
-        return 1; // Evaluation
+  //     case "VENDOR_CREATED":
+  //       return 3; // Vendor Created
 
-      case "IN_APPROVAL":
-      case "RETURNED":
-      case "RESUBMITTED":
-      case "APPROVED":
-      case "REJECTED":
-        return 2; // Approvals
-
-      case "VENDOR_CREATED":
-        return 3; // Vendor Created
-
-      default:
-        return 0;
-    }
-  };
-
-  const activeStep = getActiveStep(formData?.STATUS);
+  //     default:
+  //       return 0;
+  //   }
+  // };
 
   return (
     <div>
@@ -389,7 +431,7 @@ export default function ParentReevaluation() {
                   <ArrowBackIosNewIcon />
                 </IconButton>
 
-                <Typography variant="h6" fontWeight={700}>
+                <Typography variant='h6' fontWeight={700}>
                   {formData?.GENERALINFORMATION?.COMPANYNAME}
                 </Typography>
               </Box>
@@ -404,76 +446,74 @@ export default function ParentReevaluation() {
                 <Grid
                   container
                   spacing={4}
-                  justifyContent="center"
-                  alignItems="center"
+                  justifyContent='center'
+                  alignItems='center'
                 >
+                  <Grid item>
+                    <Typography>
+                      <b>Vendor Account</b>&nbsp;&nbsp;{" "}
+                      {formData?.VENDOR_ACCOUNT}
+                    </Typography>
+                  </Grid>
+
                   <Grid item>
                     <Typography>
                       <b>Prospect ID</b>&nbsp;&nbsp; {formData?.PROSPECT_ID}
                     </Typography>
                   </Grid>
 
-                  {/* <Grid item>
-                <Typography>
-                  <b>Vendor Account</b>&nbsp;&nbsp;{formData?.VENDOR_ACCOUNT}
-                </Typography>
-              </Grid> */}
-
                   <Grid item>
                     <Typography>
-                      <b>Email</b>&nbsp;&nbsp;
-                      {formData?.contacts?.[0]?.EMAIL || "-"}
+                      <b>Risk Level</b>&nbsp;&nbsp;{" "}
+                      {riskLevel == null ? (
+                        "-"
+                      ) : (
+                        <Chip
+                          label={riskLabels[riskLevel] || riskLevel || "-"}
+                          size='small'
+                          sx={{
+                            backgroundColor: riskColors[riskLevel]?.bg,
+                            color: riskColors[riskLevel]?.color,
+                            ...chipStyle,
+                          }}
+                        />
+                      )}
                     </Typography>
                   </Grid>
 
-                  {/* <Grid item>
-                    <Typography>
-                      <b>Vendor Group</b>&nbsp;&nbsp;
-                      {formData?.FINANCIALCOMMERCIAL?.SUPPLIERTYPE}
-                    </Typography>
-                  </Grid> */}
-
                   <Grid item>
                     <Typography>
-                      <b>Supplier Type</b>&nbsp;&nbsp;
-                      {formData?.FINANCIALCOMMERCIAL?.SUPPLIERTYPE}
+                      <b>Last Revaluation</b>&nbsp;&nbsp;{" "}
+                      {lastreevaluation || "-"}
                     </Typography>
                   </Grid>
 
-                  <Grid item display="flex" alignItems="center">
+                  <Grid item>
+                    <Typography>
+                      <b>Next Revaluation</b>&nbsp;&nbsp;{" "}
+                      {nextreevaluationdate || "-"}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item display='flex' alignItems='center'>
                     <Typography fontWeight={600} mr={2}>
                       Status
                     </Typography>
-
-                    <Chip
-                      label={formData?.STATUS?.replace(/_/g, " ")}
-                      sx={{
-                        bgcolor: chipStyle.bg,
-                        color: chipStyle.color,
-                        fontWeight: 600,
-                        borderRadius: "20px",
-                        px: 2,
-                      }}
-                    />
+                    {status == null ? (
+                      "-"
+                    ) : (
+                      <Chip
+                        label={statusLabels[status] || status || "-"}
+                        size='small'
+                        sx={{
+                          backgroundColor: statusColors[status]?.bg,
+                          color: statusColors[status]?.color,
+                          ...chipStyle,
+                        }}
+                      />
+                    )}
                   </Grid>
                 </Grid>
-
-                {/* Timeline */}
-                <Box
-                  sx={{
-                    width: 550,
-                    mt: 5,
-                    mx: "auto", // Centers the Box horizontally
-                  }}
-                >
-                  <Stepper activeStep={activeStep} alternativeLabel>
-                    {steps.map((label) => (
-                      <Step key={label}>
-                        <StepLabel>{label}</StepLabel>
-                      </Step>
-                    ))}
-                  </Stepper>
-                </Box>
 
                 <Paper
                   elevation={0}
@@ -485,7 +525,7 @@ export default function ParentReevaluation() {
                   }}
                 >
                   <Typography
-                    align="center"
+                    align='center'
                     sx={{
                       fontWeight: 500,
                       fontSize: 18,
@@ -544,7 +584,7 @@ export default function ParentReevaluation() {
                               }}
                             >
                               <Box
-                                component="img"
+                                component='img'
                                 src={isActive ? tab.activeimg : tab.img}
                                 // alt={tab.label}
                                 sx={{ height: 10, objectFit: "contain" }}
@@ -579,7 +619,7 @@ export default function ParentReevaluation() {
                   </Box>
                   <UserContext.Provider value={{ formData, setFormData }}>
                     {activeTab == "Registration Forms" ? (
-                      <Registration />
+                      <Overview />
                     ) : activeTab == "Documents" ? (
                       <Documents />
                     ) : activeTab == "Risk Assesment" ? (

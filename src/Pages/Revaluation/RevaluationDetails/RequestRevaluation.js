@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -18,45 +18,171 @@ import {
   Paper,
   Modal,
   Divider,
+  Grid,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-
 import ConfirmRequstRevaluation from "./ConfirmRequstRevaluation";
-const vendors = [
-  {
-    accountNo: "V002",
-    prospectId: "PR002",
-    name: "EFG Manufacturer",
-    risk: "Critical",
-    lastRevaluation: "20 Mar 2026",
-    nextRevaluation: "20 Sep 2026",
-    documentStatus: "1 Expired",
-    status: "Completed",
+
+const statusColors = {
+  "Not Started": {
+    bg: "#EAE7FF",
+    color: "#725CFC",
   },
-];
-export default function RequestRevaluation({ onClose }) {
+  "Awaiting Response": {
+    bg: "#FEF0DA",
+    color: "#F99709",
+  },
+  "Validation In Progress": {
+    bg: "#E8EDFF",
+    color: "#6788FF",
+  },
+  Returned: {
+    bg: "#E8EDFF",
+    color: "#6788FF",
+  },
+  Completed: {
+    bg: "#DEF6F2",
+    color: "#21BFA7",
+  },
+  Cancelled: {
+    bg: "#FBE3EA",
+    color: "#E34472",
+  },
+};
+
+const statusLabels = {
+  "Not Started": "Not Started",
+  "Awaiting Response": "Awaiting Response",
+  "Validation In Progress": "Validation In Progress",
+  Returned: "Returned",
+  Completed: "Completed",
+  Cancelled: "Cancelled",
+};
+
+const riskColors = {
+  Critical: {
+    bg: "#FBE3EA",
+    color: "#D32F5B",
+  },
+  High: {
+    bg: "#FDE7E7",
+    color: "#E53935",
+  },
+  Elevated: {
+    bg: "#FEF0DA",
+    color: "#F99709",
+  },
+  Medium: {
+    bg: "#FFF8E1",
+    color: "#C79A00",
+  },
+  Low: {
+    bg: "#DEF6F2",
+    color: "#21BFA7",
+  },
+};
+
+const riskLabels = {
+  Critical: "Critical",
+  High: "High",
+  Elevated: "Elevated",
+  Medium: "Medium",
+  Low: "Low",
+};
+
+const documentStatusColors = {
+  Valid: {
+    bg: "#DEF6F2",
+    color: "#21BFA7",
+  },
+  "Expiring Soon": {
+    bg: "#FEF0DA",
+    color: "#F99709",
+  },
+  Expired: {
+    bg: "#FBE3EA",
+    color: "#E34472",
+  },
+  "No Documents": {
+    bg: "#F5F5F5",
+    color: "#616161",
+  },
+  "-": {
+    bg: "#F5F5F5",
+    color: "#616161",
+  },
+};
+
+const documentStatusLabels = {
+  Valid: "Valid",
+  "Expiring Soon": "Expiring Soon",
+  Expired: "Expired",
+  "No Documents": "-",
+  "-": "-",
+};
+
+const chipStyle = {
+  height: "22px",
+  fontSize: "11px",
+  minWidth: "75px",
+  fontWeight: 500,
+  fontFamily: "Poppins, sans-serif",
+  "& .MuiChip-label": {
+    px: "6px",
+  },
+};
+
+export default function RequestRevaluation({ onClose, data }) {
   const [selected, setSelected] = useState([]);
   const [search, setSearch] = useState("");
   const [riskLevel, setRiskLevel] = useState("Critical");
   const [status, setStatus] = useState("All");
   const [documentStatus, setDocumentStatus] = useState("Expired");
   const [modal, setModal] = useState(false);
-  const allSelected = vendors.length > 0 && selected.length === vendors.length;
+  const [vendors, setVendors] = useState([]);
+  // const [search, setSearch] = useState("");
+
+  const filteredVendors = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+
+    if (!searchValue) {
+      return vendors;
+    }
+
+    return vendors?.filter((vendor) =>
+      Object.values(vendor).some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(searchValue),
+      ),
+    );
+  }, [vendors, search]);
+
+  useEffect(() => {
+    setVendors(data);
+  }, []);
+
+  console.log(data);
+
+  const allSelected =
+    vendors?.length > 0 && selected?.length === vendors?.length;
 
   const handleSelectAll = (event) => {
     if (event.target.checked) {
-      setSelected(vendors.map((vendor) => vendor.accountNo));
+      setSelected(vendors.map((vendor) => vendor.vendoraccount));
     } else {
       setSelected([]);
     }
   };
-  const handleSelectVendor = (accountNo) => {
+
+  const handleSelectVendor = (vendoraccount) => {
     setSelected((prev) =>
-      prev.includes(accountNo)
-        ? prev.filter((id) => id !== accountNo)
-        : [...prev, accountNo],
+      prev.includes(vendoraccount)
+        ? prev.filter((id) => id !== vendoraccount)
+        : [...prev, vendoraccount],
     );
   };
   return (
@@ -153,38 +279,89 @@ export default function RequestRevaluation({ onClose }) {
                 borderBottom: "1px solid #D8D8D8",
               }}
             >
-              <Checkbox
-                checked={allSelected}
-                onChange={handleSelectAll}
-                size="small"
+              <Grid
                 sx={{
-                  p: 0,
-                  mr: "7px",
-                  color: "#333",
-                  "&.Mui-checked": { color: "#333" },
-                  "& .MuiSvgIcon-root": { fontSize: 18 },
-                }}
-              />
-              <Typography
-                sx={{
-                  fontSize: "12px",
-                  color: "#333",
-                  fontFamily: "Poppins, sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  width: "100%",
+                  justifyContent: "space-between",
                 }}
               >
-                Select all
-              </Typography>
+                {/* Select All */}
+                <Grid
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <Checkbox
+                    checked={allSelected}
+                    onChange={handleSelectAll}
+                    size='small'
+                    sx={{
+                      p: 0,
+                      mr: "7px",
+                      color: "#333",
+                      "&.Mui-checked": { color: "#333" },
+                      "& .MuiSvgIcon-root": { fontSize: 18 },
+                    }}
+                  />
+
+                  <Typography
+                    sx={{
+                      fontSize: "12px",
+                      color: "#333",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Select all
+                  </Typography>
+                </Grid>
+
+                {/* Search */}
+                <Grid>
+                  <TextField
+                    size='small'
+                    placeholder='Search...'
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    sx={{
+                      width: 180,
+                      ml: 2,
+                      "& .MuiInputBase-root": {
+                        height: 28,
+                        fontSize: "11px",
+                        fontFamily: "Poppins, sans-serif",
+                      },
+                      "& .MuiInputBase-input": {
+                        padding: "4px 8px",
+                      },
+                    }}
+                  />
+                </Grid>
+              </Grid>
             </Box>
+
             <TableContainer
               component={Paper}
               elevation={0}
-              sx={{ borderRadius: 0, overflowX: "auto" }}
+              sx={{
+                borderRadius: 0,
+                overflowX: "auto",
+                maxHeight: "50vh",
+                minHeight: "50vh",
+                position: "relative",
+              }}
             >
               <Table
-                size="small"
+                stickyHeader
+                size='small'
                 sx={{
-                  minWidth: 780,
-                  "& .MuiTableCell-root": { py: "6px", px: "7px" },
+                  "& .MuiTableCell-stickyHeader": {
+                    top: -1,
+                    backgroundColor: "#F5F5F5",
+                    zIndex: 2,
+                  },
                 }}
               >
                 {/* TABLE HEADER */}
@@ -196,29 +373,29 @@ export default function RequestRevaluation({ onClose }) {
                     <TableCell sx={headerText}> Risk Level </TableCell>
                     <TableCell sx={headerText}> Last Revaluation </TableCell>
                     <TableCell sx={headerText}> Next Revaluation </TableCell>
-                    <TableCell sx={headerText} align="center">
+                    <TableCell sx={headerText} align='center'>
                       Document Status
                     </TableCell>
-                    <TableCell sx={headerText} align="center">
+                    <TableCell sx={headerText} align='center'>
                       Status
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 {/* TABLE BODY */}
                 <TableBody>
-                  {vendors.map((vendor) => {
-                    const checked = selected.includes(vendor.accountNo);
+                  {filteredVendors?.map((vendor) => {
+                    const checked = selected.includes(vendor.vendoraccount);
                     return (
-                      <TableRow key={vendor.accountNo}>
+                      <TableRow key={vendor.vendoraccount}>
                         {/* Account number */}
                         <TableCell>
                           <Box sx={{ display: "flex", alignItems: "center" }}>
                             <Checkbox
                               checked={checked}
                               onChange={() =>
-                                handleSelectVendor(vendor.accountNo)
+                                handleSelectVendor(vendor.vendoraccount)
                               }
-                              size="small"
+                              size='small'
                               sx={{
                                 p: 0,
                                 mr: "7px",
@@ -228,43 +405,103 @@ export default function RequestRevaluation({ onClose }) {
                               }}
                             />
                             <Typography sx={bodyText}>
-                              {vendor.accountNo}
+                              {vendor.vendoraccount}
                             </Typography>
                           </Box>
                         </TableCell>
                         {/* Prospect ID */}
                         <TableCell>
                           <Typography sx={bodyText}>
-                            {vendor.prospectId}
+                            {vendor.prospectid}
                           </Typography>
                         </TableCell>
                         {/* Vendor name */}
                         <TableCell>
-                          <Typography sx={bodyText}>{vendor.name}</Typography>
+                          <Typography sx={bodyText}>
+                            {vendor.vendorname}
+                          </Typography>
                         </TableCell>
                         {/* Risk */}
                         <TableCell>
-                          <RiskBadge />
+                          {/* <RiskBadge /> */}
+
+                          {vendor.risklevel == null ? (
+                            "-"
+                          ) : (
+                            <Chip
+                              label={
+                                riskLabels[vendor.risklevel] ||
+                                vendor.risklevel ||
+                                "-"
+                              }
+                              size='small'
+                              sx={{
+                                backgroundColor:
+                                  riskColors[vendor.risklevel]?.bg,
+                                color: riskColors[vendor.risklevel]?.color,
+                                ...chipStyle,
+                              }}
+                            />
+                          )}
                         </TableCell>
                         {/* Last Revaluation */}
                         <TableCell>
                           <Typography sx={bodyText}>
-                            {vendor.lastRevaluation}
+                            {vendor.lastreevaluation || "-"}
                           </Typography>
                         </TableCell>
                         {/* Next Revaluation */}
                         <TableCell>
                           <Typography sx={bodyText}>
-                            {vendor.nextRevaluation}
+                            {vendor.nextreevaluationdate || "-"}
                           </Typography>
                         </TableCell>
                         {/* Document */}
-                        <TableCell align="center">
-                          <DocumentBadge />
+                        <TableCell align='center'>
+                          {vendor.documentstatus == null ||
+                          vendor.documentstatus == "-" ? (
+                            "-"
+                          ) : (
+                            <Chip
+                              label={
+                                documentStatusLabels[vendor.documentstatus] ||
+                                vendor.documentstatus ||
+                                "-"
+                              }
+                              size='small'
+                              sx={{
+                                backgroundColor:
+                                  documentStatusColors[vendor.documentstatus]
+                                    ?.bg,
+                                color:
+                                  documentStatusColors[vendor.documentstatus]
+                                    ?.color,
+                                ...chipStyle,
+                              }}
+                            />
+                          )}
                         </TableCell>
                         {/* Status */}
-                        <TableCell align="center">
-                          <StatusBadge />
+                        <TableCell align='center'>
+                          {/* <StatusBadge /> */}
+                          {vendor.status == null ? (
+                            "-"
+                          ) : (
+                            <Chip
+                              label={
+                                statusLabels[vendor.status] ||
+                                vendor.status ||
+                                "-"
+                              }
+                              size='small'
+                              sx={{
+                                backgroundColor:
+                                  statusColors[vendor.status]?.bg,
+                                color: statusColors[vendor.status]?.color,
+                                ...chipStyle,
+                              }}
+                            />
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -312,7 +549,7 @@ export default function RequestRevaluation({ onClose }) {
           </Button>
           <Button
             onClick={onClose}
-            variant="outlined"
+            variant='outlined'
             sx={{
               width: "190px",
               height: "34px",
@@ -336,8 +573,8 @@ export default function RequestRevaluation({ onClose }) {
       <Modal
         open={modal}
         onClose={() => setModal(false)}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
+        aria-labelledby='modal-modal-title'
+        aria-describedby='modal-modal-description'
       >
         <Box
           sx={{
@@ -351,7 +588,11 @@ export default function RequestRevaluation({ onClose }) {
             maxHeight: 680,
           }}
         >
-          <ConfirmRequstRevaluation setModal={setModal} onClose={onClose} />
+          <ConfirmRequstRevaluation
+            // setModal={setModal}
+            onClose={onClose}
+            allSelected={allSelected}
+          />
         </Box>
       </Modal>
     </Box>

@@ -192,7 +192,7 @@ const LogWithOTP = () => {
       };
 
       axios
-        .post("http://10.50.20.89:9091/auth/otp/send", payload)
+        .post("http://10.10.0.115:8095/auth/otp/send", payload)
         .then((res) => {
           if (res.data.ok == true) {
             setLoading(false);
@@ -240,7 +240,7 @@ const LogWithOTP = () => {
 
       try {
         const res = await axios.post(
-          `http://10.50.20.89:9091/auth/otp/verify`,
+          `http://10.10.0.115:8095/auth/otp/verify`,
           payload,
         );
 

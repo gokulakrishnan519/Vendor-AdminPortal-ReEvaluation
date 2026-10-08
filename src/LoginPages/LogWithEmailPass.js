@@ -116,7 +116,7 @@ export default function LogWithEmailPass() {
 
     try {
       const res = await axios.post(
-        "http://10.50.20.89:9091/login/login",
+        "http://10.10.0.115:8095/login/login",
         payload,
       );
 

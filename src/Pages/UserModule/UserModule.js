@@ -342,7 +342,7 @@ export default function UserModule() {
     setLoading(true);
     await axios
       .post(
-        "http://10.50.20.89:9091/Createprospect/createprospect/send_invitation",
+        "http://10.10.0.115:8095/Createprospect/createprospect/send_invitation",
         payload,
       )
       .then((res) => {
@@ -390,7 +390,7 @@ export default function UserModule() {
     setLoading(true);
 
     try {
-      const res = await axios.get("http://10.50.20.89:9091/prospect/list");
+      const res = await axios.get("http://10.10.0.115:8095/prospect/list");
 
       console.log(res.data);
       setProspectlist(res.data);

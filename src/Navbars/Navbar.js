@@ -248,7 +248,7 @@ export default function Navbar({ children }) {
   const getNotificationCount = async () => {
     try {
       const res = await axios.get(
-        `http://10.50.20.89:9091/notifications/count?vendor_account=${sessionStorage.getItem("vend_account")}`,
+        `http://10.10.0.115:8095/notifications/count?vendor_account=${sessionStorage.getItem("vend_account")}`,
       );
 
       console.log(res.data);
@@ -281,7 +281,7 @@ export default function Navbar({ children }) {
 
     try {
       const res = await axios.post(
-        `http://10.50.20.89:9091/notifications/unread`,
+        `http://10.10.0.115:8095/notifications/unread`,
         payload,
       );
 
@@ -347,7 +347,7 @@ export default function Navbar({ children }) {
     <Box sx={{ display: "flex", height: "100vh" }}>
       <CssBaseline />
       <AppBar
-        position="fixed"
+        position='fixed'
         // open={open}
         sx={{
           backgroundColor: "white",
@@ -357,14 +357,14 @@ export default function Navbar({ children }) {
       >
         <Grid>
           <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            width="100%"
+            display='flex'
+            alignItems='center'
+            justifyContent='space-between'
+            width='100%'
           >
             <Grid sx={{ paddingLeft: "22vh", mt: "1.5vh" }}>
               <Box
-                component="img"
+                component='img'
                 src={vendorHub}
                 sx={{
                   width: 150,
@@ -391,9 +391,9 @@ export default function Navbar({ children }) {
             >
               <IconButton onClick={handleClick2}>
                 <Box
-                  component="img"
+                  component='img'
                   src={profile} // Path to your image
-                  alt="Notification"
+                  alt='Notification'
                   sx={{
                     width: 23,
                     height: 23,
@@ -415,7 +415,7 @@ export default function Navbar({ children }) {
         </Grid>
       </AppBar>
       <Drawer
-        variant="permanent"
+        variant='permanent'
         open={open}
         sx={{
           // width: drawer == "miniopen" ? drawerWidth : 60, // 👈 IMPORTANT
@@ -438,7 +438,7 @@ export default function Navbar({ children }) {
         <Grid sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
           <img
             src={hiQ_logo}
-            alt="icon"
+            alt='icon'
             style={{
               height: 56,
               objectFit: "contain",
@@ -493,7 +493,7 @@ export default function Navbar({ children }) {
                       }}
                     >
                       <Box
-                        component="img"
+                        component='img'
                         src={item.activeicon}
                         sx={{
                           width: 20,
@@ -603,7 +603,7 @@ export default function Navbar({ children }) {
 
                   try {
                     await axios.post(
-                      `http://10.50.20.89:9091/notifications/read-all`,
+                      `http://10.10.0.115:8095/notifications/read-all`,
                       payload,
                     );
                     console.log();
@@ -647,7 +647,7 @@ export default function Navbar({ children }) {
 
                         try {
                           await axios.post(
-                            `http://10.50.20.89:9091/notifications/read`,
+                            `http://10.10.0.115:8095/notifications/read`,
                             payload,
                           );
 
@@ -702,7 +702,7 @@ export default function Navbar({ children }) {
 
                       {/* RIGHT SIDE — Time */}
                       <TableCell
-                        align="right"
+                        align='right'
                         sx={{
                           width: "30%",
                           fontFamily: "Poppins, sans-serif",
@@ -822,7 +822,7 @@ export default function Navbar({ children }) {
               </Typography>
 
               <Button
-                variant="outlined"
+                variant='outlined'
                 sx={{
                   textTransform: "none",
                   mt: 1.5,
@@ -845,7 +845,7 @@ export default function Navbar({ children }) {
 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               <Button
-                variant="contained"
+                variant='contained'
                 sx={{
                   textTransform: "none",
                   borderRadius: 2,
