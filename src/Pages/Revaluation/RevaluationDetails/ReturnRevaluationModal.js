@@ -16,7 +16,6 @@ import {
   Divider,
   Grid,
   CircularProgress,
-  Popover,
   Dialog,
   DialogContent,
 } from "@mui/material";
@@ -29,7 +28,8 @@ import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import Loading from "../../../Loading/Loading";
 
 /* =========================================================
    THEME
@@ -175,7 +175,6 @@ function SectionHeader({
   onEdit,
   onCancel,
   onSave,
-  popstatus,
 }) {
   return (
     <Box
@@ -374,7 +373,6 @@ function SectionHeader({
             Cancel
           </Button>
 
-          {/* {popstatus != "Edit_for_this_batch" && ( */}
           <Button
             onClick={onSave}
             startIcon={<CheckIcon sx={{ fontSize: 15 }} />}
@@ -406,7 +404,6 @@ function SectionHeader({
           >
             Save
           </Button>
-          {/* )} */}
         </Box>
       )}
     </Box>
@@ -477,12 +474,11 @@ function RiskChip({ risk }) {
    EMAIL RECIPIENTS
 ========================================================= */
 
-function EmailRecipients({ settingGetAll }) {
+function EmailRecipients({ settingGetAll, recipients, setRecipients }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [recipients, setRecipients] = useState([]);
   const [editRecipients, setEditRecipients] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -543,9 +539,9 @@ function EmailRecipients({ settingGetAll }) {
     try {
       setSaving(true);
 
-      // for (const recipient of editRecipients) {
-      await EmailRecipientEdit(editRecipients);
-      // }
+      for (const recipient of editRecipients) {
+        await EmailRecipientEdit(recipient);
+      }
 
       setRecipients(
         editRecipients.map((item) => ({
@@ -633,14 +629,12 @@ function EmailRecipients({ settingGetAll }) {
   // ==========================================
   // EDIT RECIPIENT API
   // ==========================================
-  const EmailRecipientEdit = async (editRecipients) => {
+  const EmailRecipientEdit = async (recipient) => {
     try {
       const payload = {
-        recipients: editRecipients.map((recipient) => ({
-          cc_master_id: recipient.ccmasterid,
-          display_name: recipient.displayname?.trim() || "",
-          email_address: recipient.emailaddress?.trim() || "",
-        })),
+        cc_master_id: recipient.ccmasterid,
+        display_name: recipient.displayname.trim(),
+        email_address: recipient.emailaddress.trim(),
         modified_by: sessionStorage.getItem("UserId"),
       };
 
@@ -850,17 +844,6 @@ function EmailRecipients({ settingGetAll }) {
               }}
             >
               Email Notification Recipients
-            </Typography>
-
-            <Typography
-              sx={{
-                mt: 0.25,
-                fontSize: 11,
-                color: "#64748B",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              People who receive vendor revaluation notifications.
             </Typography>
           </Box>
         </Box>
@@ -1218,93 +1201,17 @@ function EmailRecipients({ settingGetAll }) {
    EMAIL TEMPLATE
 ========================================================= */
 
-function EmailTemplate({
-  settingGetAll,
-  setEmailTemplateData,
-  popoverselection,
-  setPopoverselection,
-}) {
+function EmailTemplate({ templateData, setTemplateData }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [templateData, setTemplateData] = useState({});
-  const [editData, setEditData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
 
+  const location = useLocation();
+
+  console.log(templateData);
+
+  const [editData, setEditData] = useState({});
   const navigate = useNavigate();
-
-  // ==========================================
-  // LOAD EMAIL TEMPLATE
-  // ==========================================
-  useEffect(() => {
-    const template = settingGetAll?.data?.email_template;
-
-    if (template && typeof template === "object") {
-      setTemplateData({
-        ...template,
-      });
-
-      setEditData({
-        ...template,
-      });
-
-      setEmailTemplateData({
-        ...template,
-      });
-    }
-  }, [settingGetAll]);
-
-  // ==========================================
-  // EMAIL TEMPLATE EDIT API
-  // ==========================================
-  const EmailTemplateEdit = async () => {
-    try {
-      const payload = {
-        template_id: editData.templateid,
-        subject: editData.subject?.trim() || "",
-        email_body: editData.emailbody?.trim() || "",
-        modified_by: sessionStorage.getItem("UserId"),
-      };
-
-      console.log("Email Template Payload:", payload);
-
-      const response = await fetch(
-        "http://10.10.0.115:8095/vendor-reevaluation/settings/email-template",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        },
-        setLoading(true),
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("API Error:", data);
-
-        throw new Error(
-          data?.detail || "Failed to update email template settings",
-        );
-      }
-
-      console.log("Email template updated successfully:", data);
-
-      return data;
-    } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || err.message || "Login failed";
-
-      navigate("/ErrorHandling");
-      sessionStorage.setItem("errormessge", errorMessage);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // ==========================================
   // EDIT
@@ -1321,40 +1228,41 @@ function EmailTemplate({
   // SAVE
   // ==========================================
   const handleSave = async () => {
-    if (popoverselection == "Edit_for_this_batch") {
-      setTemplateData({
-        ...editData,
-      });
-
-      setEmailTemplateData({
-        ...editData,
-      });
+    if (!editData.emailbody?.trim()) {
+      alert("Email body cannot be empty");
+      return;
+    } else {
+      setTemplateData((prev) => ({
+        ...prev,
+        emailbody: editData.emailbody.trim(),
+      }));
 
       setEditing(false);
-    } else {
-      try {
-        setSaving(true);
-
-        await EmailTemplateEdit();
-
-        // Update frontend only after API success
-        setTemplateData({
-          ...editData,
-        });
-
-        setEmailTemplateData({
-          ...editData,
-        });
-
-        setEditing(false);
-      } catch (error) {
-        console.error("Save failed:", error);
-
-        // Keep edit mode open if API fails
-      } finally {
-        setSaving(false);
-      }
     }
+
+    // try {
+    //   setSaving(true);
+
+    //   await EmailTemplateEdit(editData);
+
+    //   setTemplateData((prev) => ({
+    //     ...prev,
+    //     emailbody: editData.emailbody.trim(),
+    //   }));
+
+    //   setEditing(false);
+    // } catch (error) {
+    //   console.error("Save failed:", error);
+
+    //   sessionStorage.setItem(
+    //     "errormessge",
+    //     error.message || "Failed to update email template",
+    //   );
+
+    //   navigate("/ErrorHandling");
+    // } finally {
+    //   setSaving(false);
+    // }
   };
 
   // ==========================================
@@ -1368,16 +1276,19 @@ function EmailTemplate({
     setEditing(false);
   };
 
-  //handleClick
-
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
+  // ==========================================
+  // TEXT STYLE
+  // ==========================================
+  const emailTextStyle = {
+    fontSize: {
+      xs: 11,
+      sm: 12,
+    },
+    lineHeight: 1.8,
+    color: "#334155",
+    fontFamily: "Poppins, sans-serif",
+    whiteSpace: "pre-line",
   };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  const open = Boolean(anchorEl);
 
   return (
     <Card
@@ -1390,32 +1301,29 @@ function EmailTemplate({
     >
       <SectionHeader
         title='Email Template'
-        subtitle='Customize the email sent to vendors during revaluation.'
         icon={<MailOutlineIcon sx={{ fontSize: 18 }} />}
         editing={editing}
-        onEdit={handleClick}
+        onEdit={handleEdit}
         onCancel={handleCancel}
         onSave={handleSave}
-        popstatus={popoverselection}
       />
 
       <Divider />
+
       {loading ? (
         <Box
           sx={{
-            px: 1.5,
-            py: 1.1,
-            borderRadius: "8px",
-            border: `1px solid ${COLORS.border}`,
-            backgroundColor: "#F8FAFC",
+            p: 3,
             textAlign: "center",
           }}
         >
           <CircularProgress />
         </Box>
       ) : (
-        <Box sx={{ p: 2.5 }}>
-          {/* SUBJECT */}
+        <Box sx={{ p: { xs: 1.5, sm: 2.5 } }}>
+          {/* ==================================
+              SUBJECT - STATIC
+          ================================== */}
           <Box sx={{ mb: 2.5 }}>
             <Typography
               sx={{
@@ -1429,27 +1337,6 @@ function EmailTemplate({
               Subject
             </Typography>
 
-            {/* {editing ? (
-              <TextField
-                value={editData.subject ?? ""}
-                onChange={(e) =>
-                  setEditData((prev) => ({
-                    ...prev,
-                    subject: e.target.value,
-                  }))
-                }
-                size="small"
-                fullWidth
-                disabled={saving}
-                sx={{
-                  ...inputStyle,
-                  "& .MuiInputBase-root": {
-                    fontSize: 12,
-                    fontFamily: "Poppins, sans-serif",
-                  },
-                }}
-              />
-            ) : ( */}
             <Box
               sx={{
                 px: 1.5,
@@ -1459,20 +1346,15 @@ function EmailTemplate({
                 backgroundColor: "#F8FAFC",
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: 12,
-                  color: COLORS.text,
-                  fontFamily: "Poppins, sans-serif",
-                }}
-              >
-                {templateData.subject ?? "-"}
+              <Typography sx={emailTextStyle}>
+                {templateData.subject}
               </Typography>
             </Box>
-            {/* )} */}
           </Box>
 
-          {/* EMAIL CONTENT */}
+          {/* ==================================
+              EMAIL CONTENT
+          ================================== */}
           <Box>
             <Typography
               sx={{
@@ -1495,191 +1377,95 @@ function EmailTemplate({
                 py: 1.75,
               }}
             >
-              <Box sx={{ my: 1.5 }}>
-                <Typography
-                  sx={{
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
+              {/* GREETING - STATIC */}
+              <Typography sx={emailTextStyle}>Dear [Vendor Name],</Typography>
 
-                    lineHeight: 1.7,
-
-                    color: "#334155",
-
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  Dear [Vendor Name],
-                </Typography>
-                <Box
-                  sx={{
-                    my: {
-                      xs: 1,
-                      sm: 1.5,
-                    },
-                  }}
-                >
-                  {editing ? (
-                    <TextField
-                      value={editData.emailbody ?? ""}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          emailbody: e.target.value,
-                        }))
-                      }
-                      multiline
-                      minRows={5}
-                      fullWidth
-                      variant='outlined'
-                      disabled={saving}
-                      sx={{
-                        ...inputStyle,
-
-                        "& .MuiInputBase-root": {
-                          alignItems: "flex-start",
-                          fontSize: 12,
-                          lineHeight: 1.7,
-                          fontFamily: "Poppins, sans-serif",
-                        },
-                      }}
-                    />
-                  ) : (
-                    <Typography
-                      sx={{
+              {/* ================================
+                  ONLY EDITABLE EMAIL BODY
+              ================================= */}
+              <Box sx={{ my: 2 }}>
+                {editing ? (
+                  <TextField
+                    value={editData.emailbody ?? ""}
+                    onChange={(e) =>
+                      setEditData((prev) => ({
+                        ...prev,
+                        emailbody: e.target.value,
+                      }))
+                    }
+                    multiline
+                    minRows={5}
+                    fullWidth
+                    variant='outlined'
+                    disabled={saving}
+                    sx={{
+                      ...inputStyle,
+                      "& .MuiInputBase-root": {
+                        alignItems: "flex-start",
                         fontSize: 12,
-                        lineHeight: 1.7,
-                        color: "#334155",
-                        whiteSpace: "pre-line",
+                        lineHeight: 1.8,
                         fontFamily: "Poppins, sans-serif",
-                      }}
-                    >
-                      {templateData.emailbody ?? "-"}
-                    </Typography>
-                  )}
-                </Box>
-                <Typography
-                  sx={{
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
+                        backgroundColor: "#FFFFFF",
+                      },
+                    }}
+                  />
+                ) : (
+                  <Typography sx={emailTextStyle}>
+                    {templateData.emailbody || "-"}
+                  </Typography>
+                )}
+              </Box>
 
-                    lineHeight: 1.7,
-
-                    color: "#334155",
-
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  [Document Upload Link]
-                </Typography>
+              {/* COMMENTS - STATIC */}
+              <Box sx={{ mt: 2 }}>
+                <Typography sx={emailTextStyle}>Comments:</Typography>
 
                 <Typography
                   sx={{
-                    mt: 1.5,
-
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
-
-                    lineHeight: 1.7,
-
-                    color: "#334155",
-
-                    fontFamily: "Poppins, sans-serif",
+                    ...emailTextStyle,
+                    fontWeight: 600,
                   }}
                 >
-                  If you have any questions, please contact us.
+                  [Return Reason / Comments]
                 </Typography>
+              </Box>
 
+              {/* FORM LINK - STATIC */}
+              <Box sx={{ mt: 1 }}>
                 <Typography
                   sx={{
-                    mt: 1.5,
-
-                    fontSize: {
-                      xs: 11,
-                      sm: 12,
-                    },
-
-                    lineHeight: 1.7,
-
-                    color: "#334155",
-
-                    whiteSpace: "pre-line",
-
-                    fontFamily: "Poppins, sans-serif",
+                    ...emailTextStyle,
+                    fontWeight: 600,
+                    color: "#2563EB",
                   }}
                 >
-                  Regards,{"\n"}
-                  [Company Name]
+                  [Update Revaluation Form]
                 </Typography>
+              </Box>
+
+              {/* CLOSING MESSAGE - STATIC */}
+              <Box sx={{ mt: 2.5 }}>
+                <Typography sx={emailTextStyle}>
+                  Once the required updates have been submitted, our team will
+                  review the information again.
+                </Typography>
+
+                <Typography sx={{ ...emailTextStyle, mt: 1 }}>
+                  If you have any questions or need assistance, please contact
+                  us.
+                </Typography>
+              </Box>
+
+              {/* SIGNATURE - STATIC */}
+              <Box sx={{ mt: 2.5 }}>
+                <Typography sx={emailTextStyle}>Regards,</Typography>
+
+                <Typography sx={emailTextStyle}>[Company Name]</Typography>
               </Box>
             </Box>
           </Box>
         </Box>
       )}
-
-      <Popover
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
-        PaperProps={{
-          sx: {
-            mt: 0.5,
-            borderRadius: "4px",
-            overflow: "hidden",
-          },
-        }}
-      >
-        <Box sx={{ width: "220px" }}>
-          <Box
-            sx={{
-              px: 2,
-              py: 1,
-              fontSize: "10px",
-              cursor: "pointer",
-              "&:hover": {
-                backgroundColor: "#e5edf8",
-              },
-              fontFamily: "Poppins, sans-serif",
-            }}
-            onClick={() => {
-              handleClose();
-              setPopoverselection("Edit_for_this_batch");
-              handleEdit();
-            }}
-          >
-            Edit for this batch
-          </Box>
-
-          <Box
-            sx={{
-              px: 2,
-              py: 1,
-              fontSize: "10px",
-              cursor: "pointer",
-              "&:hover": {
-                backgroundColor: "#e5edf8",
-              },
-              fontFamily: "Poppins, sans-serif",
-            }}
-            onClick={() => {
-              handleClose();
-              setPopoverselection("Edit_default_settings");
-              handleEdit();
-            }}
-          >
-            Edit default settings
-          </Box>
-        </Box>
-      </Popover>
     </Card>
   );
 }
@@ -1688,16 +1474,26 @@ function EmailTemplate({
    MAIN COMPONENT
 ========================================================= */
 
-export default function ConfirmRequstRevaluation({ onClose, allSelected }) {
+export default function ReturnRevaluationModal({
+  onClose,
+  revaluation_id,
+  email,
+}) {
   const [settingGetAll, setSettingGetAll] = useState(null);
-  const [emailTemplateData, setEmailTemplateData] = useState(null);
-  const [popoverselection, setPopoverselection] = useState("");
-  const [resultModalOpen, setResultModalOpen] = useState(false);
-  const [resultType, setResultType] = useState("");
-  const [resultMessage, setResultMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recipients, setRecipients] = useState([]);
+  const [returnReason, setReturReason] = useState("");
+  const [templateData, setTemplateData] = useState({
+    templateid: 0,
+    subject: "Action Required: Vendor Revaluation – [Vendor Name]",
+    emailbody:
+      "During the review of your vendor revaluation, some information or documents require correction or additional details.\n\nPlease review the comments provided below and update the required information and documents through the Vendor Revaluation Form.",
+  });
+
+  //reevaluation_id
 
   const getSetting = async () => {
+    setLoading(true);
     try {
       const response = await fetch(
         "http://10.10.0.115:8095/vendor-reevaluation/settings",
@@ -1711,37 +1507,39 @@ export default function ConfirmRequstRevaluation({ onClose, allSelected }) {
 
       const data = await response.json();
       setSettingGetAll(data);
+      setLoading(false);
       return data;
     } catch (error) {
       console.error("Failed to get settings:", error);
       throw error;
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    getSetting();
-  }, []);
+  const [resultModalOpen, setResultModalOpen] = useState(false);
+  const [resultType, setResultType] = useState("");
+  const [resultMessage, setResultMessage] = useState("");
 
-  console.log(allSelected);
-  console.log(emailTemplateData);
-  console.log(popoverselection);
-
-  const confirmRevalution = async () => {
+  const returnVendor = async () => {
     setLoading(true);
-    const payload = {
-      vendor_accounts: allSelected,
-      trigger_reason: "",
-      triggered_by: sessionStorage.getItem("Prospect_id"),
-      email_override: {
-        use_override: popoverselection === "Edit_default_settings",
-        subject: "Vendor Reevaluation -reg",
-        body: emailTemplateData?.emailbody,
-      },
-    };
 
     try {
+      const payload = {
+        reevaluation_id: revaluation_id,
+        subject: "Action Required: Vendor Revaluation – [Vendor Name]",
+        body: templateData?.emailbody,
+        to_email: email,
+        cc_emails: recipients.map((item) =>
+          typeof item === "string" ? item : item.emailaddress,
+        ),
+        action_by: sessionStorage.getItem("UserId"),
+        return_reason: returnReason,
+      };
+
+      console.log("Return Vendor Payload:", payload);
+
       const response = await fetch(
-        "http://10.10.0.115:8095/vendor-reevaluation/initiate",
+        "http://10.10.0.115:8095/vendor-reevaluation/risk-assessment/return-email",
         {
           method: "POST",
           headers: {
@@ -1754,571 +1552,595 @@ export default function ConfirmRequstRevaluation({ onClose, allSelected }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.detail ||
-            data?.message ||
-            "Failed to initiate vendor reevaluation.",
-        );
+        throw new Error(data?.detail || "Failed to return vendor.");
       }
 
-      setSettingGetAll(data);
-
-      // Success
       setResultType("success");
-      setResultMessage(
-        "The reevaluation request has been initiated successfully. Email notifications have been sent to the selected vendor contacts.",
-      );
+      setResultMessage(data?.message || "Vendor returned successfully.");
       setResultModalOpen(true);
-    } catch (error) {
-      console.error("Vendor reevaluation failed:", error);
 
-      // Error
+      console.log("Vendor returned successfully:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Failed to return vendor:", error);
+
       setResultType("error");
-      setResultMessage(
-        error?.message || "Something went wrong. Please try again.",
-      );
+      setResultMessage("Failed to return vendor.");
       setResultModalOpen(true);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    getSetting();
+  }, []);
+
   return (
-    <>
-      <Box
+    <Box
+      sx={{
+        position: "absolute",
+
+        top: "50%",
+        left: "50%",
+
+        transform: "translate(-50%, -50%)",
+
+        width: {
+          xs: "calc(100% - 16px)",
+          sm: "calc(100% - 32px)",
+          md: "calc(100% - 64px)",
+          lg: "calc(100% - 100px)",
+        },
+
+        maxWidth: {
+          xs: "100%",
+          sm: 900,
+          md: 1120,
+          lg: 1200,
+        },
+
+        height: {
+          xs: "calc(100vh - 16px)",
+          sm: "calc(100vh - 32px)",
+          md: "calc(100vh - 64px)",
+        },
+
+        maxHeight: {
+          xs: "100vh",
+          sm: 900,
+        },
+
+        backgroundColor: COLORS.white,
+
+        borderRadius: {
+          xs: "10px",
+          sm: "12px",
+          md: "16px",
+        },
+
+        outline: "none",
+
+        display: "flex",
+
+        flexDirection: "column",
+
+        overflow: "hidden",
+
+        boxShadow: "0 24px 70px rgba(15, 23, 42, 0.20)",
+      }}
+    >
+      {/* Success / Error Dialog */}
+      <Dialog
+        open={resultModalOpen}
+        maxWidth={false}
+        fullWidth
         sx={{
-          position: "absolute",
-
-          top: "50%",
-          left: "50%",
-
-          transform: "translate(-50%, -50%)",
-
-          width: {
-            xs: "calc(100% - 16px)",
-            sm: "calc(100% - 32px)",
-            md: "calc(100% - 64px)",
-            lg: "calc(100% - 100px)",
+          "& .MuiDialog-paper": {
+            width: "70%",
+            maxWidth: "100%",
+            m: 1,
+            borderRadius: "8px",
+            fontFamily: "Poppins, sans-serif",
           },
-
-          maxWidth: {
-            xs: "100%",
-            sm: 900,
-            md: 1120,
-            lg: 1200,
-          },
-
-          height: {
-            xs: "calc(100vh - 16px)",
-            sm: "calc(100vh - 32px)",
-            md: "calc(100vh - 64px)",
-          },
-
-          maxHeight: {
-            xs: "100vh",
-            sm: 900,
-          },
-
-          backgroundColor: COLORS.white,
-
-          borderRadius: {
-            xs: "10px",
-            sm: "12px",
-            md: "16px",
-          },
-
-          outline: "none",
-
-          display: "flex",
-
-          flexDirection: "column",
-
-          overflow: "hidden",
-
-          boxShadow: "0 24px 70px rgba(15, 23, 42, 0.20)",
         }}
       >
-        <Dialog
-          open={resultModalOpen}
-          onClose={() => setResultModalOpen(false)}
-          maxWidth='sm'
-          fullWidth
+        <DialogContent
+          sx={{
+            textAlign: "center",
+            py: 3,
+            px: 2,
+            fontFamily: "Poppins, sans-serif",
+          }}
         >
-          <DialogContent
+          <Typography
+            fontWeight={600}
             sx={{
-              textAlign: "center",
-              py: 3,
-              px: 4,
               fontFamily: "Poppins, sans-serif",
+              fontSize: "16px",
+              mb: 1.5,
+              color: resultType === "success" ? "#2E7D32" : "#D32F2F",
             }}
           >
-            <Typography
-              variant='h6'
-              fontWeight={600}
-              sx={{
-                fontFamily: "Poppins, sans-serif",
-                fontSize: "18px",
-              }}
-            >
-              {resultType === "success"
-                ? "ⓘ Vendor Reevaluation Initiated Successfully"
-                : "Vendor Reevaluation Failed"}
-            </Typography>
+            {resultType === "success"
+              ? "Vendor Returned Successfully"
+              : "Vendor Return Failed"}
+          </Typography>
 
-            <Typography
-              sx={{
-                mt: 2,
-                fontFamily: "Poppins, sans-serif",
-                fontSize: "13px",
-              }}
-            >
-              {resultMessage}
-            </Typography>
+          <Typography
+            sx={{
+              fontFamily: "Poppins, sans-serif",
+              fontSize: "12px",
+              mb: 2.5,
+              color: "#555",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {resultMessage}
+          </Typography>
 
-            <Button
-              variant='contained'
-              onClick={() => {
-                if (resultType == "success") {
-                  setResultModalOpen(false);
-                  onClose();
-                } else {
-                  setResultModalOpen(false);
-                }
-              }}
-              sx={{
-                mt: 3,
-                width: 180,
-                fontSize: "13px",
-                backgroundColor: "#FF3154",
-                fontFamily: "Poppins, sans-serif",
-                "&:hover": {
-                  backgroundColor: "#FF3154",
-                },
-              }}
-            >
-              {resultType === "success" ? "Done" : "Close"}
-            </Button>
-          </DialogContent>
-        </Dialog>
-        <>
-          {loading ? (
-            <Box
-              sx={{
-                height: "80vh",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <CircularProgress size={40} />
-            </Box>
-          ) : (
-            <>
-              {/* =====================================================
+          <Button
+            variant='contained'
+            onClick={() => {
+              setResultModalOpen(false);
+              onClose();
+            }}
+            sx={{
+              textTransform: "none",
+              fontFamily: "Poppins, sans-serif",
+              fontSize: "12px",
+              minWidth: 70,
+              py: 0.5,
+              borderRadius: "5px",
+            }}
+          >
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* =====================================================
           MAIN HEADER
       ===================================================== */}
 
-              <Box
-                sx={{
-                  flexShrink: 0,
+      {loading ? (
+        <Loading />
+      ) : (
+        <>
+          <Box
+            sx={{
+              flexShrink: 0,
 
-                  px: {
-                    xs: 1.5,
-                    sm: 3,
-                    md: 4,
-                  },
+              px: {
+                xs: 1.5,
+                sm: 3,
+                md: 4,
+              },
 
-                  py: {
-                    xs: 1.5,
-                    sm: 2,
-                    md: 2.5,
-                  },
+              py: {
+                xs: 1.5,
+                sm: 2,
+                md: 2.5,
+              },
 
-                  borderBottom: `1px solid ${COLORS.border}`,
+              borderBottom: `1px solid ${COLORS.border}`,
 
-                  backgroundColor: "#FFFFFF",
-                }}
-              >
+              backgroundColor: "#FFFFFF",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "flex-start",
+
+                justifyContent: "space-between",
+
+                gap: {
+                  xs: 1,
+                  sm: 2,
+                },
+              }}
+            >
+              {/* LEFT */}
+              <Box>
                 <Box
                   sx={{
                     display: "flex",
 
-                    alignItems: "flex-start",
-
-                    justifyContent: "space-between",
+                    alignItems: "center",
 
                     gap: {
                       xs: 1,
-                      sm: 2,
+                      sm: 1.25,
                     },
                   }}
                 >
-                  {/* LEFT */}
-                  <Box>
-                    <Box
-                      sx={{
-                        display: "flex",
-
-                        alignItems: "center",
-
-                        gap: {
-                          xs: 1,
-                          sm: 1.25,
-                        },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: {
-                            xs: 34,
-                            sm: 40,
-                          },
-
-                          height: {
-                            xs: 34,
-                            sm: 40,
-                          },
-
-                          borderRadius: "10px",
-
-                          display: "flex",
-
-                          alignItems: "center",
-
-                          justifyContent: "center",
-
-                          backgroundColor: COLORS.primaryLight,
-
-                          color: COLORS.primary,
-
-                          flexShrink: 0,
-                        }}
-                      >
-                        <ScheduleOutlinedIcon
-                          sx={{
-                            fontSize: {
-                              xs: 18,
-                              sm: 21,
-                            },
-                          }}
-                        />
-                      </Box>
-
-                      <Box>
-                        <Typography
-                          sx={{
-                            fontSize: {
-                              xs: 15,
-                              sm: 18,
-                              md: 20,
-                            },
-
-                            fontWeight: 600,
-
-                            lineHeight: 1.3,
-
-                            color: COLORS.text,
-
-                            fontFamily: "Poppins, sans-serif",
-                          }}
-                        >
-                          Confirm Vendor Revaluation
-                        </Typography>
-
-                        <Typography
-                          sx={{
-                            mt: 0.35,
-
-                            fontSize: {
-                              xs: 9.5,
-                              sm: 10,
-                              md: 11,
-                            },
-
-                            color: COLORS.secondaryText,
-
-                            fontFamily: "Poppins, sans-serif",
-
-                            maxWidth: {
-                              xs: 230,
-                              sm: 500,
-                              md: "none",
-                            },
-                          }}
-                        >
-                          The Following email will be sent to the selected
-                          vendors when the revaluation is initiated
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-
-                  {/* CLOSE */}
-                  <IconButton
-                    onClick={onClose}
-                    aria-label='Close'
+                  <Box
                     sx={{
                       width: {
-                        xs: 30,
-                        sm: 34,
+                        xs: 34,
+                        sm: 40,
                       },
 
                       height: {
-                        xs: 30,
-                        sm: 34,
+                        xs: 34,
+                        sm: 40,
                       },
 
-                      color: "#64748B",
+                      borderRadius: "10px",
 
-                      borderRadius: "8px",
+                      display: "flex",
+
+                      alignItems: "center",
+
+                      justifyContent: "center",
+
+                      backgroundColor: COLORS.primaryLight,
+
+                      color: COLORS.primary,
 
                       flexShrink: 0,
-
-                      "&:hover": {
-                        backgroundColor: "#F1F5F9",
-
-                        color: COLORS.text,
-                      },
                     }}
                   >
-                    <CloseIcon
+                    <ScheduleOutlinedIcon
                       sx={{
                         fontSize: {
-                          xs: 17,
-                          sm: 19,
+                          xs: 18,
+                          sm: 21,
                         },
                       }}
                     />
-                  </IconButton>
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontSize: {
+                          xs: 15,
+                          sm: 18,
+                          md: 20,
+                        },
+
+                        fontWeight: 600,
+
+                        lineHeight: 1.3,
+
+                        color: COLORS.text,
+
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      Return Revaluation to Vendor
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        mt: 0.35,
+
+                        fontSize: {
+                          xs: 9.5,
+                          sm: 10,
+                          md: 11,
+                        },
+
+                        color: COLORS.secondaryText,
+
+                        fontFamily: "Poppins, sans-serif",
+
+                        maxWidth: {
+                          xs: 230,
+                          sm: 500,
+                          md: "none",
+                        },
+                      }}
+                    >
+                      The vendor will be notified that additional information or
+                      corrections are required before the revaluation can be
+                      completed.
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
 
-              {/* =====================================================
+              {/* CLOSE */}
+              <IconButton
+                onClick={onClose}
+                aria-label='Close'
+                sx={{
+                  width: {
+                    xs: 30,
+                    sm: 34,
+                  },
+
+                  height: {
+                    xs: 30,
+                    sm: 34,
+                  },
+
+                  color: "#64748B",
+
+                  borderRadius: "8px",
+
+                  flexShrink: 0,
+
+                  "&:hover": {
+                    backgroundColor: "#F1F5F9",
+
+                    color: COLORS.text,
+                  },
+                }}
+              >
+                <CloseIcon
+                  sx={{
+                    fontSize: {
+                      xs: 17,
+                      sm: 19,
+                    },
+                  }}
+                />
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* =====================================================
           SCROLLABLE BODY
       ===================================================== */}
 
-              <Box
-                sx={{
-                  flex: 1,
+          <Box
+            sx={{
+              flex: 1,
 
-                  minHeight: 0,
+              minHeight: 0,
 
-                  overflowY: "auto",
+              overflowY: "auto",
 
-                  px: {
-                    xs: 1,
-                    sm: 2,
-                    md: 3,
-                  },
+              px: {
+                xs: 1,
+                sm: 2,
+                md: 3,
+              },
 
-                  py: {
-                    xs: 1.25,
-                    sm: 2,
-                    md: 2.5,
-                  },
+              py: {
+                xs: 1.25,
+                sm: 2,
+                md: 2.5,
+              },
 
-                  backgroundColor: COLORS.background,
+              backgroundColor: COLORS.background,
 
-                  "&::-webkit-scrollbar": {
-                    width: 7,
-                  },
+              "&::-webkit-scrollbar": {
+                width: 7,
+              },
 
-                  "&::-webkit-scrollbar-track": {
-                    background: "transparent",
-                  },
+              "&::-webkit-scrollbar-track": {
+                background: "transparent",
+              },
 
-                  "&::-webkit-scrollbar-thumb": {
-                    backgroundColor: "#CBD5E1",
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "#CBD5E1",
 
-                    borderRadius: 10,
-                  },
+                borderRadius: 10,
+              },
 
-                  scrollbarWidth: "thin",
+              scrollbarWidth: "thin",
 
-                  scrollbarColor: "#CBD5E1 transparent",
-                }}
-              >
-                {/* =================================================
+              scrollbarColor: "#CBD5E1 transparent",
+            }}
+          >
+            {/* =================================================
             MAIN RESPONSIVE GRID
         ================================================= */}
-
-                <Grid
-                  container
-                  spacing={{
-                    xs: 1.5,
-                    sm: 1.5,
-                    md: 2,
-                    lg: 2,
-                  }}
-                  alignItems='stretch'
-                >
-                  {/* EMAIL RECIPIENTS */}
-                  <Grid
-                    size={{
-                      xs: 12,
-                      sm: 12,
-                      md: 6,
-                      lg: 6,
+            <Grid sx={{ backgroundColor: COLORS.background }}>
+              <Box container spacing={3}>
+                {/* Comments */}
+                <Grid size={{ lg: 12, xs: 12, md: 4, sm: 6 }} sx={{ mb: 3 }}>
+                  <Typography
+                    variant='body2'
+                    sx={{
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#000",
+                      mb: 1.5,
                     }}
                   >
-                    <EmailRecipients settingGetAll={settingGetAll} />
-                  </Grid>
+                    Return Reason
+                    <span style={{ color: "#E63946" }}> *</span>
+                  </Typography>
 
-                  {/* EMAIL TEMPLATE */}
-                  <Grid
-                    size={{
-                      xs: 12,
-                      sm: 12,
-                      md: 6,
-                      lg: 6,
+                  <TextField
+                    value={returnReason}
+                    onChange={(e) => {
+                      setReturReason(e.target.value);
                     }}
-                  >
-                    <EmailTemplate
-                      settingGetAll={settingGetAll}
-                      setEmailTemplateData={setEmailTemplateData}
-                      popoverselection={popoverselection}
-                      setPopoverselection={setPopoverselection}
-                    />
-                  </Grid>
+                    sx={{ backgroundColor: "white" }}
+                    placeholder='Enter the Reason'
+                    multiline
+                    rows={2}
+                    variant='outlined'
+                    fullWidth
+                  />
                 </Grid>
+              </Box>
+            </Grid>
+            <Grid
+              container
+              spacing={{
+                xs: 1.5,
+                sm: 1.5,
+                md: 2,
+                lg: 2,
+              }}
+              alignItems='stretch'
+            >
+              {/* EMAIL RECIPIENTS */}
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 12,
+                  md: 6,
+                  lg: 6,
+                }}
+              >
+                <EmailRecipients
+                  settingGetAll={settingGetAll}
+                  recipients={recipients}
+                  setRecipients={setRecipients}
+                />
+              </Grid>
 
-                {/* =================================================
+              {/* EMAIL TEMPLATE */}
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 12,
+                  md: 6,
+                  lg: 6,
+                }}
+              >
+                <EmailTemplate
+                  templateData={templateData}
+                  setTemplateData={setTemplateData}
+                />
+              </Grid>
+            </Grid>
+
+            {/* =================================================
             BOTTOM BUTTONS
         ================================================= */}
 
-                <Grid
-                  container
-                  justifyContent='center'
-                  spacing={{
-                    xs: 1,
-                    sm: 1.5,
-                  }}
+            <Grid
+              container
+              justifyContent='center'
+              spacing={{
+                xs: 1,
+                sm: 1.5,
+              }}
+              sx={{
+                pt: {
+                  xs: 2,
+                  sm: 3,
+                },
+
+                pb: {
+                  xs: 1,
+                  sm: 0.5,
+                },
+              }}
+            >
+              {/* CONFIRM */}
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: "auto",
+                }}
+              >
+                <Button
+                  fullWidth
                   sx={{
-                    pt: {
-                      xs: 2,
-                      sm: 3,
+                    width: {
+                      xs: "100%",
+                      sm: "190px",
                     },
 
-                    pb: {
-                      xs: 1,
-                      sm: 0.5,
+                    height: {
+                      xs: "36px",
+                      sm: "34px",
+                    },
+
+                    borderRadius: "6px",
+
+                    textTransform: "none",
+
+                    fontSize: {
+                      xs: "12px",
+                      sm: "13px",
+                    },
+
+                    fontWeight: 600,
+
+                    fontFamily: "Poppins, sans-serif",
+
+                    backgroundColor: "#FF3154",
+
+                    color: "#FFFFFF",
+
+                    boxShadow: "none",
+
+                    "&:hover": {
+                      backgroundColor: "#FF8197",
+
+                      boxShadow: "none",
+                    },
+
+                    "&.Mui-disabled": {
+                      backgroundColor: "#FF91A4",
+
+                      color: "#FFFFFF",
+
+                      opacity: 0.75,
+                    },
+                  }}
+                  disabled={returnReason == ""}
+                  onClick={returnVendor}
+                >
+                  Confirm Return
+                </Button>
+              </Grid>
+
+              {/* CANCEL */}
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: "auto",
+                }}
+              >
+                <Button
+                  onClick={onClose}
+                  variant='outlined'
+                  fullWidth
+                  sx={{
+                    width: {
+                      xs: "100%",
+                      sm: "190px",
+                    },
+
+                    height: {
+                      xs: "36px",
+                      sm: "34px",
+                    },
+
+                    borderRadius: "6px",
+
+                    border: "1.5px solid #FF3154",
+
+                    textTransform: "none",
+
+                    fontSize: {
+                      xs: "12px",
+                      sm: "13px",
+                    },
+
+                    fontWeight: 600,
+
+                    fontFamily: "Poppins, sans-serif",
+
+                    color: "#FF3154",
+
+                    "&:hover": {
+                      border: "1.5px solid #FF3154",
+
+                      backgroundColor: "rgba(255,49,84,0.04)",
                     },
                   }}
                 >
-                  {/* CONFIRM */}
-                  <Grid
-                    size={{
-                      xs: 12,
-                      sm: "auto",
-                    }}
-                  >
-                    <Button
-                      fullWidth
-                      sx={{
-                        width: {
-                          xs: "100%",
-                          sm: "190px",
-                        },
-
-                        height: {
-                          xs: "36px",
-                          sm: "34px",
-                        },
-
-                        borderRadius: "6px",
-
-                        textTransform: "none",
-
-                        fontSize: {
-                          xs: "12px",
-                          sm: "13px",
-                        },
-
-                        fontWeight: 600,
-
-                        fontFamily: "Poppins, sans-serif",
-
-                        backgroundColor: "#FF3154",
-
-                        color: "#FFFFFF",
-
-                        boxShadow: "none",
-
-                        "&:hover": {
-                          backgroundColor: "#FF8197",
-
-                          boxShadow: "none",
-                        },
-
-                        "&.Mui-disabled": {
-                          backgroundColor: "#FF91A4",
-
-                          color: "#FFFFFF",
-
-                          opacity: 0.75,
-                        },
-                      }}
-                      onClick={confirmRevalution}
-                    >
-                      Confirm Revaluation
-                    </Button>
-                  </Grid>
-
-                  {/* CANCEL */}
-                  <Grid
-                    size={{
-                      xs: 12,
-                      sm: "auto",
-                    }}
-                  >
-                    <Button
-                      onClick={onClose}
-                      variant='outlined'
-                      fullWidth
-                      sx={{
-                        width: {
-                          xs: "100%",
-                          sm: "190px",
-                        },
-
-                        height: {
-                          xs: "36px",
-                          sm: "34px",
-                        },
-
-                        borderRadius: "6px",
-
-                        border: "1.5px solid #FF3154",
-
-                        textTransform: "none",
-
-                        fontSize: {
-                          xs: "12px",
-                          sm: "13px",
-                        },
-
-                        fontWeight: 600,
-
-                        fontFamily: "Poppins, sans-serif",
-
-                        color: "#FF3154",
-
-                        "&:hover": {
-                          border: "1.5px solid #FF3154",
-
-                          backgroundColor: "rgba(255,49,84,0.04)",
-                        },
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </Grid>
-                </Grid>
-              </Box>
-            </>
-          )}
+                  Cancel
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
         </>
-      </Box>
-    </>
+      )}
+    </Box>
   );
 }

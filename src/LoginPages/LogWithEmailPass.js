@@ -138,6 +138,9 @@ export default function LogWithEmailPass() {
         } else if (roleName === "Risk Assessment" || roleName === "Approver") {
           sessionStorage.setItem("selectnav1", "Prospects");
           navigate("/Prospects");
+        } else if (roleName === "Reevaluation") {
+          sessionStorage.setItem("selectnav1", "Revaluation");
+          navigate("/Revaluation");
         } else {
           navigate("/");
         }

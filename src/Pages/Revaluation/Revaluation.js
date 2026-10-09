@@ -389,7 +389,7 @@ export default function Revaluation() {
 
   useEffect(() => {
     fetchVendorlist();
-  }, []);
+  }, [modal]);
 
   const filteredRows = Array.isArray(rows)
     ? rows.filter((row) => {
@@ -430,13 +430,30 @@ export default function Revaluation() {
     sessionStorage.setItem("selectnav1", "Revaluation");
   }, []);
 
+  console.log(documentStatus);
+  console.log(appliedFilters);
+
+  const clickdocumentissue = () => {
+    setAppliedFilters({
+      search: "",
+      riskLevel: [],
+      status: [],
+      documentStatus: ["Expired", "Expiring Soon"],
+    });
+
+    setDocumentStatus(["Expired", "Expiring Soon"]);
+  };
+
   return (
     <div>
       {loading ? (
         <Loading />
       ) : (
         <Navbar>
-          <Revaluationtop vendordetails={vendorList?.summary} />
+          <Revaluationtop
+            vendordetails={vendorList?.summary}
+            clickdocumentissue={clickdocumentissue}
+          />
 
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ lg: 12, xs: 12, md: 12, sm: 12 }}>
@@ -685,6 +702,123 @@ export default function Revaluation() {
                 <Grid sx={{ mt: 1 }}>
                   {/* Table */}
 
+                  {documentStatus == [] && (
+                    <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                          flexWrap: "wrap",
+                          fontFamily: "Poppins, sans-serif",
+                        }}
+                      >
+                        {/* Filter Results Label */}
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 500,
+                            color: "#242424",
+                            fontFamily: "Poppins, sans-serif",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Filter Results
+                        </Typography>
+
+                        {/* Selected Filter Chip */}
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.5,
+                            backgroundColor: "#E5EEFD",
+                            borderRadius: "30px",
+                            px: 2.5,
+                            py: 0.8,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: "14px",
+                              fontWeight: 400,
+                              color: "#0754CD",
+                              fontFamily: "Poppins, sans-serif",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Document Status
+                          </Typography>
+
+                          <Typography
+                            sx={{
+                              fontSize: "14px",
+                              fontWeight: 600,
+                              color: "#0754CD",
+                              fontFamily: "Poppins, sans-serif",
+                            }}
+                          >
+                            {documentStatus}
+                          </Typography>
+
+                          <IconButton
+                            size='small'
+                            onClick={() => {
+                              setAppliedFilters({
+                                ...appliedFilters,
+                                documentStatus: [],
+                              });
+                              setDocumentStatus([]);
+                            }}
+                            aria-label='Remove document status filter'
+                            sx={{
+                              p: 0,
+                              ml: 0.5,
+                              color: "#0754CD",
+                              "&:hover": {
+                                backgroundColor: "transparent",
+                                color: "#003A9B",
+                              },
+                            }}
+                          >
+                            <CloseIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Box>
+
+                        {/* Clear All Button */}
+
+                        <Button
+                          onClick={() => {
+                            setAppliedFilters({
+                              ...appliedFilters,
+                              documentStatus: [],
+                            });
+                            setDocumentStatus([]);
+                          }}
+                          sx={{
+                            textTransform: "none",
+                            color: "#0754CD",
+                            fontSize: "14px",
+                            fontWeight: 500,
+                            fontFamily: "Poppins, sans-serif",
+                            textDecoration: "underline",
+                            p: 0,
+                            minWidth: "auto",
+                            whiteSpace: "nowrap",
+                            "&:hover": {
+                              backgroundColor: "transparent",
+                              textDecoration: "underline",
+                            },
+                          }}
+                        >
+                          Clear all
+                        </Button>
+                      </Box>
+                      <br />
+                    </>
+                  )}
+
                   <TableContainer>
                     <Table
                       stickyHeader
@@ -763,6 +897,8 @@ export default function Revaluation() {
                                           nextreevaluationdate:
                                             row.nextreevaluationdate,
                                           status: row.status,
+                                          revaluation_id: row.reevaluationid,
+                                          email: row.email,
                                         },
                                       });
                                       sessionStorage.setItem(

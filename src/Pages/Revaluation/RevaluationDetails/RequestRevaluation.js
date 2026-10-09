@@ -591,7 +591,7 @@ export default function RequestRevaluation({ onClose, data }) {
           <ConfirmRequstRevaluation
             // setModal={setModal}
             onClose={onClose}
-            allSelected={allSelected}
+            allSelected={selected}
           />
         </Box>
       </Modal>

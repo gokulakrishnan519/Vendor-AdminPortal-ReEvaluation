@@ -24,12 +24,15 @@ import {
   DialogContentText,
   DialogTitle,
   DialogActions,
+  Modal,
+  CircularProgress,
 } from "@mui/material";
 import axios from "axios";
 import UserContext from "../../../../UseContext/UserContext";
 import Loading from "../../../../Loading/Loading";
 import { useNavigate } from "react-router-dom";
 import { buttonStyle } from "../../../../style";
+import ReturnRevaluationModal from "../ReturnRevaluationModal";
 
 export default function RiskAssessment(props) {
   const [snackbar, setSnackbar] = useState({
@@ -46,11 +49,12 @@ export default function RiskAssessment(props) {
   const [errorMessage, setErrorMessage] = useState("");
   const { formData } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
-  const [selectVendorGroup, setSelectVendorGroup] = useState("");
+  const [details, setSelectVendorGroup] = useState("");
   const [vendorGroupList, setVendorGropList] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
   const [dialogType, setDialogType] = useState(""); // save | submit
+  const [modal, setModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -60,10 +64,10 @@ export default function RiskAssessment(props) {
         i === index
           ? {
               ...item,
+              is_applicable: value === "Yes",
               status: value,
-              // If not applicable ("No"), Risk Level doesn't apply anymore,
-              // so clear whatever was selected before.
               riskLevel: value === "No" ? "" : item.riskLevel,
+              risk_level: value === "No" ? null : item.risk_level,
             }
           : item,
       ),
@@ -73,7 +77,13 @@ export default function RiskAssessment(props) {
   const handleRiskLevelChange = (index, value) => {
     setRiskData((prev) =>
       prev.map((item, i) =>
-        i === index ? { ...item, riskLevel: value } : item,
+        i === index
+          ? {
+              ...item,
+              riskLevel: value,
+              risk_level: value,
+            }
+          : item,
       ),
     );
   };
@@ -84,53 +94,67 @@ export default function RiskAssessment(props) {
     );
   };
 
-  // Validation function for Submit Decision
-  const validateSubmitDecision = () => {
-    setErrorMessage("");
+  const handleGetRiskAssesmentList = async () => {
+    setLoading(true);
 
-    // Only validate risk assessment for SUBMITTED
-    if (decision !== "REJECTED" && decision !== "RESUBMITTED") {
-      // Check if all Applicable (status) fields are filled
-      const allStatusFilled = riskData.every((item) => item.status !== "");
-      if (!allStatusFilled) {
-        setErrorMessage(
-          "❌ All 'Applicable' fields are mandatory. Please select a value for each row.",
-        );
-        return false;
-      }
-
-      // Check if all Risk Level fields are filled
-      const allRiskLevelFilled = riskData.every(
-        (item) => item.status === "No" || item.riskLevel !== "",
+    try {
+      const response = await axios.post(
+        "http://10.10.0.115:8095/vendor-reevaluation/risk-assessment",
+        {
+          reevaluation_id: props.revaluation_id,
+        },
       );
-      if (!allRiskLevelFilled) {
-        setErrorMessage(
-          "❌ All 'Risk Level' fields are mandatory. Please select a value for each row.",
-        );
-        return false;
-      }
-    }
 
-    // Check if decision is selected
-    if (!decision) {
-      setErrorMessage("❌ Please select a decision before submitting.");
-      return false;
-    }
+      const result = response.data?.data;
 
-    // Comments are mandatory for REJECTED and RESUBMITTED
-    if (
-      (decision === "REJECTED" || decision === "RESUBMITTED") &&
-      !comments.trim()
-    ) {
-      setErrorMessage("❌ Comments are mandatory for this decision.");
-      return false;
-    }
+      setAllRiskAssesmentData(response.data);
 
-    return true;
+      setRiskData(
+        (result?.details ?? []).map((item) => ({
+          ...item,
+          status: item.is_applicable === true ? "Yes" : "No",
+          riskLevel: item.risk_level ?? "",
+          remarks: item.remarks ?? "",
+        })),
+      );
+
+      setOverallRiskLevel(result?.assessment?.overall_risk_level ?? "");
+
+      setComments(result?.assessment?.comments ?? "");
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Something went wrong";
+
+      sessionStorage.setItem("errormessge", errorMessage);
+      navigate("/ErrorHandling");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = async () => {
-    if (!validateSubmitDecision()) {
+  const handleSubmit = async (type) => {
+    if (!riskData?.length) {
+      setErrorMessage("No risk assessment data available.");
+      return;
+    }
+
+    const missingStatus = riskData.some((item) => !item.status?.trim());
+
+    if (missingStatus) {
+      setErrorMessage(
+        "Please select Applicable for every risk assessment row.",
+      );
+      return;
+    }
+
+    const missingRiskLevel = riskData.some(
+      (item) => item.status !== "No" && !item.riskLevel?.trim(),
+    );
+
+    if (missingRiskLevel) {
+      setErrorMessage("Please select a Risk Level for every applicable row.");
       return;
     }
 
@@ -138,35 +162,31 @@ export default function RiskAssessment(props) {
     setLoading(true);
 
     const payload = {
-      Header: [
-        {
-          ProspectId: formData?.PROSPECT_ID,
-          AssessedByUserId: sessionStorage.getItem("UserId"),
-          SubmittedByUserId: sessionStorage.getItem("UserId"),
-          InitiatedByUserId: sessionStorage.getItem("UserId"),
-          AssessmentStatus: "Submitted",
-          Comments: comments,
-          ToEmail: "",
-          VendorGroup: selectVendorGroup,
-          OverallRiskLevel: overallriskLevel || "",
-        },
-      ],
-      lines: riskData,
+      reevaluation_id: props.revaluation_id,
+      action: type,
+      overall_risk_level: overallriskLevel,
+      comments: comments.trim(),
+      action_by: sessionStorage.getItem("UserId"),
+      details: riskData,
     };
 
     try {
       const response = await axios.post(
-        "http://10.10.0.115:8095/riskassessment/create",
+        "http://10.10.0.115:8095/vendor-reevaluation/risk-assessment/save",
         payload,
       );
 
-      if (response.data.SUCCESS) {
-        setDialogType("submit");
-        setDialogMessage(response.data.MESSAGE);
+      if (response.data?.status) {
+        setDialogType(type == "COMPLETED" ? "Submit" : "");
+        setDialogMessage(
+          response.data.message || "Risk assessment completed successfully.",
+        );
         setOpenDialog(true);
+      } else {
+        setErrorMessage(
+          response.data?.message || "Unable to complete risk assessment.",
+        );
       }
-
-      setLoading(false);
     } catch (error) {
       const errorMessage =
         error.response?.data?.message ||
@@ -175,228 +195,6 @@ export default function RiskAssessment(props) {
 
       sessionStorage.setItem("errormessge", errorMessage);
       navigate("/ErrorHandling");
-      setLoading(false);
-    }
-  };
-
-  // Save Draft - No validation required
-
-  // const handleSaveDraft = async () => {
-  //   setErrorMessage("");
-
-  //   setLoading(true);
-  //   const payload = {
-  //     Header: [
-  //       {
-  //         ProspectId: formData?.PROSPECT_ID,
-  //         AssessedByUserId: sessionStorage.getItem("UserId"),
-  //         SubmittedByUserId: sessionStorage.getItem("UserId"),
-  //         InitiatedByUserId: sessionStorage.getItem("UserId"),
-  //         AssessmentStatus: "",
-  //         Comments: comments,
-  //         ToEmail: "",
-  //         VendorGroup: selectVendorGroup ?? selectVendorGroup,
-  //         OverallRiskLevel: overallriskLevel ? overallriskLevel : "",
-  //       },
-  //     ],
-  //     lines: riskData,
-  //   };
-
-  //   try {
-  //     const response = await axios.post(
-  //       "http://10.10.0.115:8095/riskassessment/create",
-  //       payload,
-  //     );
-
-  //     console.log("Response:", response.data);
-
-  //     setSnackbar({
-  //       open: true,
-  //       message: "Risk Assessment saved successfully!",
-  //       severity: "success",
-  //     });
-
-  //     handleGetRiskAssesmentList();
-  //     setLoading(false);
-  //   } catch (error) {
-  //     const errorMessage =
-  //       error.response?.data?.message || error.message || "Login failed";
-
-  //     navigate("/ErrorHandling");
-  //     sessionStorage.setItem("errormessge", errorMessage);
-  //     setLoading(false);
-  //   }
-  // };
-
-  const handleSaveDraft = async () => {
-    setErrorMessage("");
-    setLoading(true);
-
-    const payload = {
-      Header: [
-        {
-          ProspectId: formData?.PROSPECT_ID,
-          AssessedByUserId: sessionStorage.getItem("UserId"),
-          SubmittedByUserId: sessionStorage.getItem("UserId"),
-          InitiatedByUserId: sessionStorage.getItem("UserId"),
-          AssessmentStatus: "",
-          Comments: comments,
-          ToEmail: "",
-          VendorGroup: selectVendorGroup,
-          OverallRiskLevel: overallriskLevel || "",
-        },
-      ],
-      lines: riskData,
-    };
-
-    try {
-      const response = await axios.post(
-        "http://10.10.0.115:8095/riskassessment/create",
-        payload,
-      );
-
-      if (response.data.SUCCESS) {
-        setDialogType("save");
-        setDialogMessage("Details Saved Succesfully");
-        setOpenDialog(true);
-      }
-
-      setLoading(false);
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Something went wrong";
-
-      sessionStorage.setItem("errormessge", errorMessage);
-      navigate("/ErrorHandling");
-      setLoading(false);
-    }
-  };
-
-  const defaultRiskData = [
-    {
-      id: 1,
-      process: "Manufacturing Process",
-      identifiedRisk: "Availability of machines",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 2,
-      process: "Material Inspection",
-      identifiedRisk: "Measuring instruments",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 3,
-      process: "Human Resources",
-      identifiedRisk: "Skilled personnel",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 4,
-      process: "Financial",
-      identifiedRisk: "Credit rating",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 5,
-      process: "On-Time Delivery",
-      identifiedRisk: "Schedule compliance",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 6,
-      process: "Logistics",
-      identifiedRisk: "Transportation",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 7,
-      process: "Service",
-      identifiedRisk: "Response to enquiry",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-    {
-      id: 8,
-      process: "Quality Assurance",
-      identifiedRisk: "Product consistency",
-      status: "",
-      riskLevel: "",
-      remarks: "",
-    },
-  ];
-
-  const handleGetRiskAssesmentList = async () => {
-    setLoading(true);
-    const payload = {
-      ProspectId: formData?.PROSPECT_ID,
-      // ProspectId: "PR0783",
-    };
-
-    try {
-      const response = await axios.post(
-        "http://10.10.0.115:8095/riskassessment/listpage",
-        payload,
-      );
-      setAllRiskAssesmentData(response.data);
-      console.log("Response:", response.data);
-      setRiskData(
-        response.data?.lines?.length ? response.data.lines : defaultRiskData,
-      );
-
-      setSelectVendorGroup(
-        response.data.headers.length > 0
-          ? response.data.headers[0].vendorGroup
-          : "",
-      );
-      setOverallRiskLevel(
-        response.data.headers.length > 0
-          ? response.data.headers[0].overallRiskLevel
-          : "",
-      );
-
-      setLoading(false);
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || error.message || "Login failed";
-
-      navigate("/ErrorHandling");
-      sessionStorage.setItem("errormessge", errorMessage);
-      setLoading(false);
-    }
-  };
-
-  const handleGetVendorGroup = async () => {
-    setLoading(true);
-
-    try {
-      const response = await axios.get(
-        "http://10.10.0.115:8095/vendor-groups/",
-      );
-
-      setVendorGropList(response.data);
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || error.message || "Login failed";
-
-      navigate("/ErrorHandling");
-      sessionStorage.setItem("errormessge", errorMessage);
-      setLoading(false);
     } finally {
       setLoading(false);
     }
@@ -404,7 +202,6 @@ export default function RiskAssessment(props) {
 
   useEffect(() => {
     handleGetRiskAssesmentList();
-    handleGetVendorGroup();
   }, []);
 
   const handleDialogOk = async () => {
@@ -429,6 +226,17 @@ export default function RiskAssessment(props) {
     }
   };
 
+  const reevaluationStatus = allriskAssesmentData?.data?.reevaluation?.status;
+
+  const assessmentStatus =
+    allriskAssesmentData?.data?.assessment?.assessment_status;
+
+  const isEditable = ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"].includes(
+    reevaluationStatus,
+  );
+  //  &&
+  // assessmentStatus !== "COMPLETED";
+
   return (
     <div>
       {loading ? (
@@ -437,7 +245,7 @@ export default function RiskAssessment(props) {
         <Box sx={{ p: 3, backgroundColor: "white", mt: 3 }}>
           {/* Table */}
 
-          <Snackbar
+          {/* <Snackbar
             open={snackbar.open}
             autoHideDuration={5000}
             onClose={() => setSnackbar({ ...snackbar, open: false })}
@@ -446,15 +254,15 @@ export default function RiskAssessment(props) {
             <Alert
               onClose={() => setSnackbar({ ...snackbar, open: false })}
               severity={snackbar.severity}
-              variant='filled'
+              variant="filled"
               sx={{ width: "100%" }}
             >
               {snackbar.message}
             </Alert>
-          </Snackbar>
+          </Snackbar> */}
 
           <Dialog open={openDialog} onClose={handleDialogOk}>
-            <DialogTitle>Success</DialogTitle>
+            <DialogTitle>{dialogType}</DialogTitle>
 
             <DialogContent>
               <DialogContentText>{dialogMessage}</DialogContentText>
@@ -467,53 +275,8 @@ export default function RiskAssessment(props) {
             </DialogActions>
           </Dialog>
 
-          <Grid
-            sx={{
-              mb: 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              justifyContent: "right",
-            }}
-          >
-            <Grid>
-              <Typography
-                sx={{
-                  fontSize: "14px",
-                  color: "#2e2e2e",
-                }}
-              >
-                Select Vendor Group <span style={{ color: "#E63946" }}>*</span>:
-              </Typography>
-            </Grid>
-
-            {formData?.STATUS == "TO_EVALUATE" ? (
-              <Grid>
-                <Select
-                  value={selectVendorGroup}
-                  onChange={(e) => setSelectVendorGroup(e.target.value)}
-                  displayEmpty
-                  size='small'
-                  sx={{ width: 180 }}
-                >
-                  <MenuItem value='' disabled>
-                    Select Vendor Group
-                  </MenuItem>
-
-                  {vendorGroupList.map((item) => (
-                    <MenuItem key={item.VendGroup} value={item.Description}>
-                      {item.Description}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </Grid>
-            ) : (
-              <Typography>{selectVendorGroup}</Typography>
-            )}
-          </Grid>
-
           <Grid>
-            {formData?.STATUS == "TO_EVALUATE" ? (
+            {isEditable ? (
               <TableContainer sx={{ border: "1px solid #DDDEE0" }}>
                 <Table>
                   <TableHead sx={{ bgcolor: "#F5F5F5" }}>
@@ -530,25 +293,42 @@ export default function RiskAssessment(props) {
                     </TableRow>
                   </TableHead>
 
-                  <TableBody>
-                    {riskData?.map((row, index) => (
-                      <TableRow key={index}>
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {row.process}
+                  {loading ? (
+                    <TableBody>
+                      <TableRow>
+                        <TableCell colSpan={5} align='center'>
+                          <CircularProgress />
                         </TableCell>
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {row.identifiedRisk}
-                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  ) : (
+                    <TableBody>
+                      {riskData?.map((row, index) => (
+                        <TableRow key={index}>
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.process_name}
+                          </TableCell>
 
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {allriskAssesmentData?.headers?.assessmentStatus ===
-                            undefined ||
-                          allriskAssesmentData?.headers?.assessmentStatus ===
-                            "DRAFTED" ? (
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.identified_risk}
+                          </TableCell>
+
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
                             <Select
-                              value={row.status}
+                              value={
+                                row.status === "Yes" ||
+                                row.is_applicable === true
+                                  ? "Yes"
+                                  : row.status === "No" ||
+                                      row.is_applicable === false
+                                    ? "No"
+                                    : ""
+                              }
                               onChange={(e) =>
                                 handleStatusChange(index, e.target.value)
+                              }
+                              renderValue={(selected) =>
+                                selected || "Select Status"
                               }
                               displayEmpty
                               size='small'
@@ -560,19 +340,16 @@ export default function RiskAssessment(props) {
                               <MenuItem value='Yes'>Yes</MenuItem>
                               <MenuItem value='No'>No</MenuItem>
                             </Select>
-                          ) : (
-                            row.status
-                          )}
-                        </TableCell>
+                          </TableCell>
 
-                        <TableCell>
-                          {!allriskAssesmentData?.headers?.assessmentStatus ||
-                          allriskAssesmentData?.headers?.assessmentStatus ===
-                            "DRAFTED" ? (
+                          <TableCell>
                             <Select
                               value={row.riskLevel}
                               onChange={(e) =>
                                 handleRiskLevelChange(index, e.target.value)
+                              }
+                              renderValue={(selected) =>
+                                selected || "Select Risk Level"
                               }
                               displayEmpty
                               size='small'
@@ -587,29 +364,53 @@ export default function RiskAssessment(props) {
                               <MenuItem value='Low'>Low</MenuItem>
                               <MenuItem value='Medium'>Medium</MenuItem>
                               <MenuItem value='High'>High</MenuItem>
-                              {/* <MenuItem value='Critical'>Critical</MenuItem> */}
                             </Select>
-                          ) : (
-                            row.riskLevel
-                          )}
-                        </TableCell>
+                          </TableCell>
 
-                        <TableCell sx={{ verticalAlign: "top" }}>
-                          <TextField
-                            value={row.remarks}
-                            onChange={(e) =>
-                              handleRemarksChange(index, e.target.value)
-                            }
-                            placeholder='Optional'
-                            multiline
-                            minRows={1}
-                            maxRows={3}
-                            size='small'
-                            sx={{ width: 180 }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          <TableCell sx={{ verticalAlign: "top" }}>
+                            <TextField
+                              value={row.remarks}
+                              onChange={(e) =>
+                                handleRemarksChange(index, e.target.value)
+                              }
+                              placeholder='Optional'
+                              multiline
+                              minRows={1}
+                              maxRows={3}
+                              size='small'
+                              sx={{ width: 180 }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  )}
+                </Table>
+              </TableContainer>
+            ) : allriskAssesmentData?.data?.reevaluation?.status ===
+              "MAIL_SENT" ? (
+              <TableContainer sx={{ border: "1px solid #DDDEE0" }}>
+                <Table>
+                  <TableHead sx={{ bgcolor: "#F5F5F5" }}>
+                    <TableRow>
+                      <TableCell>Process</TableCell>
+                      <TableCell>Identified risk</TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        Applicable <span style={{ color: "#E63946" }}>*</span>
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        Risk level <span style={{ color: "#E63946" }}>*</span>
+                      </TableCell>
+                      <TableCell>Observation</TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    <TableRow>
+                      <TableCell colSpan={5} align='center'>
+                        No data available
+                      </TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -630,31 +431,48 @@ export default function RiskAssessment(props) {
                     </TableRow>
                   </TableHead>
 
-                  <TableBody>
-                    {riskData?.map((row, index) => (
-                      <TableRow key={index}>
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {row.process}
+                  {loading ? (
+                    <TableBody>
+                      <TableRow>
+                        <TableCell colSpan={5} align='center'>
+                          <CircularProgress />
                         </TableCell>
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {row.identifiedRisk}
-                        </TableCell>
-
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {row.status}
-                        </TableCell>
-
-                        <TableCell>{row.riskLevel}</TableCell>
-
-                        <TableCell>{row.remarks}</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
+                    </TableBody>
+                  ) : (
+                    <TableBody>
+                      {riskData?.map((row, index) => (
+                        <TableRow key={index}>
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.process_name}
+                          </TableCell>
+
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.identified_risk}
+                          </TableCell>
+
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.is_applicable === true ? "Yes" : "No"}
+                          </TableCell>
+
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.is_applicable
+                              ? row.risk_level || "-"
+                              : "Not Applicable"}
+                          </TableCell>
+
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.remarks || "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  )}
                 </Table>
               </TableContainer>
             )}
-            {sessionStorage.getItem("RoleName") == "Risk Assessment" ? (
-              formData?.STATUS === "TO_EVALUATE" ? (
+            {/* {sessionStorage.getItem("RoleName") == "Risk Assessment" ? (
+              allriskAssesmentData?.assessment?.assessment_status  === "TO_EVALUATE" ? (
                 <>
                   <Box
                     sx={{
@@ -676,16 +494,16 @@ export default function RiskAssessment(props) {
                       Overall Risk Level{" "}
                       <span style={{ color: "#E63946" }}>*</span>:
                     </label>
-
+ 
                     <Select
                       value={overallriskLevel}
                       onChange={(e) => setOverallRiskLevel(e.target.value)}
-                      size='small'
+                      size="small"
                       sx={{ width: 150, textAlign: "center" }}
                     >
-                      <MenuItem value='Low'>Low</MenuItem>
-                      <MenuItem value='Medium'>Medium</MenuItem>
-                      <MenuItem value='High'>High</MenuItem>
+                      <MenuItem value="Low">Low</MenuItem>
+                      <MenuItem value="Medium">Medium</MenuItem>
+                      <MenuItem value="High">High</MenuItem>
                     </Select>
                   </Box>
                 </>
@@ -737,15 +555,14 @@ export default function RiskAssessment(props) {
               </Grid>
             ) : (
               ""
-            )}
+            )} */}
           </Grid>
 
           {/* Your Next Action Section */}
 
-          {sessionStorage.getItem("RoleName") == "Risk Assessment" ? (
-            formData?.STATUS === "TO_EVALUATE" ? (
-              <>
-                <Grid
+          {isEditable ? (
+            <>
+              {/* <Grid
                   sx={{
                     p: 3,
                     mt: 3,
@@ -753,292 +570,167 @@ export default function RiskAssessment(props) {
                     backgroundColor: "#fff",
                     boxShadow: "none",
                   }}
-                >
-                  <Box sx={{ mb: 3 }}>
-                    <Typography
-                      variant='h6'
-                      sx={{
-                        fontSize: "16px",
-                        fontWeight: 600,
-                        color: "#000",
-                        mb: 1,
-                      }}
-                    >
-                      Your Next Action{" "}
-                      <span style={{ color: "#E63946" }}>*</span>
-                    </Typography>
+                > */}
 
-                    <Typography
-                      variant='body2'
-                      sx={{
-                        fontSize: "14px",
-                        color: "#666",
-                      }}
-                    >
-                      We recommend approval based on the risk assessment.
-                    </Typography>
-                  </Box>
+              <Grid container spacing={3}>
+                <Grid size={{ lg: 12, xs: 12, md: 12, sm: 12 }} sx={{ mt: 3 }}>
+                  <Typography
+                    variant='body2'
+                    sx={{
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#000",
+                      mb: 1.5,
+                    }}
+                  >
+                    Comments
+                    {/* {(decision === "RESUBMITTED" ||
+                        decision === "REJECTED") && (
+                        <span style={{ color: "#E63946" }}> *</span>
+                      )} */}
+                  </Typography>
 
-                  <Grid container spacing={3}>
-                    {/* Decision Radio Buttons */}
-                    <Grid size={{ lg: 6, xs: 12, md: 4, sm: 6 }}>
-                      <Typography
-                        variant='body2'
-                        sx={{
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          color: "#000",
-                          mb: 1.5,
-                        }}
-                      >
-                        Decision
-                      </Typography>
+                  <TextField
+                    value={comments}
+                    onChange={(e) => {
+                      setComments(e.target.value);
+                      setErrorMessage("");
+                    }}
+                    // disabled={
+                    //   decision !== "REJECTED" &&
+                    //   decision !== "RESUBMITTED" &&
+                    //   (!riskData?.length ||
+                    //     !riskData.every(
+                    //       (item) =>
+                    //         item.status?.trim() &&
+                    //         (item.status === "No" || item.riskLevel?.trim()),
+                    //     ))
+                    // }
+                    placeholder='Enter the Comments'
+                    multiline
+                    rows={4}
+                    variant='outlined'
+                    fullWidth
+                  />
 
-                      <RadioGroup
-                        value={decision}
-                        onChange={(e) => {
-                          setDecision(e.target.value);
-                          setErrorMessage("");
-                        }}
-                      >
-                        <FormControlLabel
-                          disabled={
-                            !riskData?.length ||
-                            !riskData.every(
-                              (item) =>
-                                item.status?.trim() &&
-                                (item.status === "No" ||
-                                  item.riskLevel?.trim()),
-                            )
-                          }
-                          value='SUBMITTED'
-                          control={<Radio size='small' />}
-                          label='Submit for Approval'
-                          sx={{ mb: 1 }}
-                        />
-
-                        <FormControlLabel
-                          // disabled={
-                          //   !riskData?.length ||
-                          //   !riskData.every(
-                          //     (item) =>
-                          //       item.status?.trim() &&
-                          //       (item.status === "No" ||
-                          //         item.riskLevel?.trim()),
-                          //   )
-                          // }
-                          value='RESUBMITTED'
-                          control={<Radio size='small' />}
-                          label='Return to Prospect'
-                          sx={{ mb: 1 }}
-                        />
-
-                        <FormControlLabel
-                          // disabled={
-                          //   !riskData?.length ||
-                          //   !riskData.every(
-                          //     (item) =>
-                          //       item.status?.trim() &&
-                          //       (item.status === "No" ||
-                          //         item.riskLevel?.trim()),
-                          //   )
-                          // }
-                          value='REJECTED'
-                          control={<Radio size='small' />}
-                          label='Reject Prospect'
-                        />
-                      </RadioGroup>
-                    </Grid>
-
-                    {/* Comments */}
-                    <Grid size={{ lg: 6, xs: 12, md: 4, sm: 6 }}>
-                      <Typography
-                        variant='body2'
-                        sx={{
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          color: "#000",
-                          mb: 1.5,
-                        }}
-                      >
-                        Comments
-                        {(decision === "RESUBMITTED" ||
-                          decision === "REJECTED") && (
-                          <span style={{ color: "#E63946" }}> *</span>
-                        )}
-                      </Typography>
-
-                      <TextField
-                        value={comments}
-                        onChange={(e) => {
-                          setComments(e.target.value);
-                          setErrorMessage("");
-                        }}
-                        disabled={
-                          decision !== "REJECTED" &&
-                          decision !== "RESUBMITTED" &&
-                          (!riskData?.length ||
-                            !riskData.every(
-                              (item) =>
-                                item.status?.trim() &&
-                                (item.status === "No" ||
-                                  item.riskLevel?.trim()),
-                            ))
-                        }
-                        placeholder='Enter the Comments'
-                        multiline
-                        rows={4}
-                        variant='outlined'
-                        fullWidth
-                      />
-
-                      {(decision === "RESUBMITTED" ||
-                        decision === "REJECTED") &&
-                        !comments.trim() && (
-                          <Typography
-                            variant='caption'
-                            sx={{
-                              color: "#E63946",
-                              display: "block",
-                              mt: 0.5,
-                              fontSize: "12px",
-                            }}
-                          >
-                            Comments are required for this decision
-                          </Typography>
-                        )}
-                    </Grid>
-                  </Grid>
+                  {/* {(decision === "RESUBMITTED" || decision === "REJECTED") &&
+                      !comments.trim() && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "#E63946",
+                            display: "block",
+                            mt: 0.5,
+                            fontSize: "12px",
+                          }}
+                        >
+                          Comments are required for this decision
+                        </Typography>
+                      )} */}
                 </Grid>
-
-                {/* Action Buttons */}
-                <Grid
-                  container
-                  spacing={1.5}
-                  sx={{ mt: 3, justifyContent: "center" }}
-                >
-                  <Grid item xs={12} sm='auto'>
-                    <Button
-                      variant='outlined'
-                      onClick={handleSubmit}
-                      disabled={
-                        decision === "" ||
-                        // RETURNED & RESUBMITTED -> Only Comment is required
-                        ((decision === "RETURNED" ||
-                          decision === "RESUBMITTED") &&
-                          !comments?.trim()) ||
-                        // Other decisions
-                        (decision !== "RETURNED" &&
-                          decision !== "RESUBMITTED" &&
-                          (selectVendorGroup === "" ||
-                            selectVendorGroup == null ||
-                            overallriskLevel === "" ||
-                            (decision !== "REJECTED" &&
-                              (!riskData?.length ||
-                                !riskData.every(
-                                  (item) =>
-                                    item.status?.trim() &&
-                                    (item.status === "No" ||
-                                      item.riskLevel?.trim()),
-                                )))))
-                      }
-                      sx={{
-                        ...buttonStyle,
-                        bgcolor: "#E63946",
-                        color: "white",
-                        border: "1.5px solid #E63946",
-                        "&.Mui-disabled": {
-                          bgcolor: "#ccc",
-                          color: "#666",
-                          border: "1.5px solid #ccc",
-                        },
-                      }}
-                    >
-                      Submit Decision
-                    </Button>
-                  </Grid>
-
-                  <Grid item xs={12} sm='auto'>
-                    <Button
-                      variant='outlined'
-                      onClick={handleSaveDraft}
-                      disabled={
-                        !riskData?.some(
-                          (item) =>
-                            item.status?.trim() || item.riskLevel?.trim(),
-                        )
-                      }
-                      sx={{
-                        ...buttonStyle,
-                        color: "#E63946",
-                        border: "1.5px solid #E63946",
-                        "&.Mui-disabled": {
-                          color: "#999",
-                          border: "1.5px solid #ccc",
-                        },
-                      }}
-                    >
-                      Save as Draft
-                    </Button>
-                  </Grid>
-                </Grid>
-              </>
-            ) : (
-              <Grid sx={{ mt: 3, display: "flex", gap: 2 }}>
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#000",
-                    mb: 1.5,
-                  }}
-                >
-                  {" "}
-                  Decision
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    color: "#000",
-                    mb: 1.5,
-                  }}
-                >
-                  {allriskAssesmentData?.headers?.[0]?.assessmentStatus ===
-                  "SUBMITTED"
-                    ? "Submitted"
-                    : allriskAssesmentData?.headers?.[0]?.assessmentStatus ===
-                        "RESUBMITTED"
-                      ? "Returned to Prospect"
-                      : allriskAssesmentData?.headers?.[0]?.assessmentStatus ===
-                          "REJECTED"
-                        ? "Rejected Prospect"
-                        : allriskAssesmentData?.headers?.[0]?.assessmentStatus}
-                </Typography>
-                <br />
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#000",
-                    mb: 1.5,
-                  }}
-                >
-                  {" "}
-                  Comments
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-
-                    color: "#000",
-                    mb: 1.5,
-                  }}
-                >
-                  {allriskAssesmentData?.headers?.[0]?.comments}
-                </Typography>
               </Grid>
-            )
-          ) : allriskAssesmentData?.headers?.[0]?.assessmentStatus !==
+
+              {/* Action Buttons */}
+              <Grid
+                container
+                spacing={1.5}
+                sx={{ mt: 3, justifyContent: "center" }}
+              >
+                <Grid item xs={12} sm='auto'>
+                  <Button
+                    variant='outlined'
+                    onClick={() => handleSubmit("COMPLETED")}
+                    sx={{
+                      ...buttonStyle,
+                      bgcolor: "#E63946",
+                      color: "white",
+                      border: "1.5px solid #E63946",
+                      "&.Mui-disabled": {
+                        bgcolor: "#ccc",
+                        color: "#666",
+                        border: "1.5px solid #ccc",
+                      },
+                    }}
+                  >
+                    Mark as complete
+                  </Button>
+                </Grid>
+                <Grid item xs={12} sm='auto'>
+                  <Button
+                    variant='outlined'
+                    onClick={() => {
+                      setModal(true);
+                    }}
+                    disabled={
+                      !riskData?.some(
+                        (item) => item.status?.trim() || item.riskLevel?.trim(),
+                      )
+                    }
+                    sx={{
+                      ...buttonStyle,
+                      color: "#E63946",
+                      border: "1.5px solid #E63946",
+                      "&.Mui-disabled": {
+                        color: "#999",
+                        border: "1.5px solid #ccc",
+                      },
+                    }}
+                  >
+                    Return to vendor
+                  </Button>
+                </Grid>
+
+                <Grid item xs={12} sm='auto'>
+                  <Button
+                    variant='outlined'
+                    onClick={() => handleSubmit("DRAFT")}
+                    disabled={
+                      !riskData?.some(
+                        (item) => item.status?.trim() || item.riskLevel?.trim(),
+                      )
+                    }
+                    sx={{
+                      ...buttonStyle,
+                      color: "#E63946",
+                      border: "1.5px solid #E63946",
+                      "&.Mui-disabled": {
+                        color: "#999",
+                        border: "1.5px solid #ccc",
+                      },
+                    }}
+                  >
+                    Save as Draft
+                  </Button>
+                </Grid>
+              </Grid>
+            </>
+          ) : (
+            <Grid sx={{ mt: 3, display: "flex", gap: 2 }}>
+              <br />
+              <Typography
+                sx={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "#000",
+                  mb: 1.5,
+                }}
+              >
+                {" "}
+                Comments
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: "14px",
+
+                  color: "#000",
+                  mb: 1.5,
+                }}
+              >
+                {allriskAssesmentData?.data?.assessment?.comments}
+              </Typography>
+            </Grid>
+          )}
+          {/* allriskAssesmentData?.headers?.[0]?.assessmentStatus !==
             "DRAFT" ? (
             <Grid sx={{ mt: 2, display: "flex", gap: 2 }}>
               <Typography
@@ -1086,7 +778,7 @@ export default function RiskAssessment(props) {
               <Typography
                 sx={{
                   fontSize: "14px",
-
+ 
                   color: "#000",
                   mb: 1.5,
                 }}
@@ -1097,7 +789,7 @@ export default function RiskAssessment(props) {
             </Grid>
           ) : (
             ""
-          )}
+          )} */}
 
           <Grid sx={{ mt: 2 }}>
             {/* Error Alert */}
@@ -1113,6 +805,30 @@ export default function RiskAssessment(props) {
           </Grid>
         </Box>
       )}
+      <Modal
+        open={modal}
+        aria-labelledby='modal-modal-title'
+        aria-describedby='modal-modal-description'
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "calc(100% - 32px)",
+
+            height: "calc(100vh - 32px)",
+            maxHeight: 680,
+          }}
+        >
+          <ReturnRevaluationModal
+            onClose={() => setModal(false)}
+            revaluation_id={props.revaluation_id}
+            email={props.email}
+          />
+        </Box>
+      </Modal>
     </div>
   );
 }

@@ -91,128 +91,152 @@ export default function Revaluationtop(props) {
   return (
     <Box sx={{ p: 2, background: "#f5f6fa" }}>
       <Grid
-        display="flex"
+        display='flex'
         gap={2}
         spacing={1.5}
-        alignItems="stretch"
+        alignItems='stretch'
         sx={{
           flexWrap: "wrap",
           justifyContent: { xs: "center", sm: "flex-start" },
         }}
       >
-        {statCards.map((stat, index) => (
-          <Grid key={index}>
-            <Card
-              elevation={0}
-              sx={{
-                width: "170px",
-                height: "170px", // same height for all cards
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                background: stat.gradient,
-                border: stat.border,
-                borderRadius: "12px",
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                "&:hover": {
-                  transform: "translateY(-3px)",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-                },
-                // cursor: "pointer",
-              }}
-            >
-              <Grid
+        {statCards.map((stat, index) => {
+          const isDocumentIssue = stat.title === "Document Issue";
+
+          return (
+            <Grid key={index}>
+              <Card
+                elevation={0}
                 sx={{
-                  p: 2,
-                  height: "100%",
-                  boxSizing: "border-box",
+                  width: "170px",
+                  height: "170px",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
+                  background: stat.gradient,
+                  border: stat.border,
+                  borderRadius: "12px",
+
+                  cursor: isDocumentIssue ? "pointer" : "default",
+
+                  transition: isDocumentIssue
+                    ? "transform 0.2s ease, box-shadow 0.2s ease"
+                    : "none",
+
+                  "&:hover": isDocumentIssue
+                    ? {
+                        transform: "translateY(-3px)",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+                      }
+                    : {},
+
+                  textDecoration: "none",
+                }}
+                onClick={() => {
+                  if (isDocumentIssue) {
+                    props.clickdocumentissue();
+                  }
                 }}
               >
-                {/* Header - Top */}
-                <Box
+                <Grid
                   sx={{
+                    p: 2,
+                    height: "100%",
+                    boxSizing: "border-box",
                     display: "flex",
+                    flexDirection: "column",
                     justifyContent: "space-between",
-                    alignItems: "flex-start",
                   }}
                 >
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      fontFamily: "Poppins, sans-serif",
-                      fontWeight: 500,
-                      fontSize: "0.95rem",
-                      color: "#1a1a2e",
-                      lineHeight: 1.3,
-                      maxWidth: "75%",
-                    }}
-                  >
-                    {stat.title}
-                  </Typography>
-
                   <Box
                     sx={{
-                      borderRadius: "8px",
-                      p: 0.5,
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
                     }}
                   >
-                    <img
-                      src={stat.icon}
-                      alt="icon"
-                      style={{
-                        width: "30px",
-                        height: "30px",
-                        objectFit: "contain",
+                    <Typography
+                      variant='subtitle2'
+                      sx={{
+                        fontFamily: "Poppins, sans-serif",
+                        fontWeight: 500,
+                        fontSize: "0.95rem",
+                        color:
+                          stat.title === "Document Issue"
+                            ? "#1976d2"
+                            : "#1a1a2e",
+                        textDecoration:
+                          stat.title === "Document Issue"
+                            ? "underline"
+                            : "none",
+                        cursor:
+                          stat.title === "Document Issue"
+                            ? "pointer"
+                            : "default",
+                        lineHeight: 1.3,
+                        maxWidth: "75%",
                       }}
-                    />
+                    >
+                      {stat.title}
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        borderRadius: "8px",
+                        p: 0.5,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <img
+                        src={stat.icon}
+                        alt='icon'
+                        style={{
+                          width: "30px",
+                          height: "30px",
+                          objectFit: "contain",
+                        }}
+                      />
+                    </Box>
                   </Box>
-                </Box>
 
-                {/* Bottom Section */}
-                <Box>
-                  {/* Value */}
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontFamily: "Poppins, sans-serif",
-                      fontWeight: 500,
-                      fontSize: "1.8rem",
-                      color: stat.valueColor,
-                      lineHeight: 1,
-                      mb: 0.8,
-                    }}
-                  >
-                    {stat.value}
-                  </Typography>
+                  <Box>
+                    <Typography
+                      variant='h4'
+                      sx={{
+                        fontFamily: "Poppins, sans-serif",
+                        fontWeight: 500,
+                        fontSize: "1.8rem",
+                        color: stat.valueColor,
+                        lineHeight: 1,
+                        mb: 0.8,
+                      }}
+                    >
+                      {stat.value}
+                    </Typography>
 
-                  {/* Description */}
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      minHeight: "30px",
-                      fontFamily: "Poppins, sans-serif",
-                      fontStyle: "italic",
-                      fontSize: "0.6rem",
-                      color: "#555",
-                      lineHeight: 1.4,
-                      display: "block",
-                    }}
-                  >
-                    {stat.description}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Card>
-            {/* </Tooltip> */}
-          </Grid>
-        ))}
+                    <Typography
+                      variant='caption'
+                      sx={{
+                        minHeight: "30px",
+                        fontFamily: "Poppins, sans-serif",
+                        fontStyle: "italic",
+                        fontSize: "0.6rem",
+                        color: "#555",
+                        lineHeight: 1.4,
+                        display: "block",
+                      }}
+                    >
+                      {stat.description}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
     </Box>
   );

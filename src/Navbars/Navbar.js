@@ -144,20 +144,23 @@ export default function Navbar({ children }) {
             id: 4,
           },
         ]
-      : [
-          {
-            text: "Prospects",
-            activeicon: search,
-            path: "Prospects",
-            id: 5,
-          },
-          {
-            text: "Revaluation",
-            activeicon: revaluation,
-            path: "Revaluation",
-            id: 7,
-          },
-        ]),
+      : roleName === "Reevaluation"
+        ? [
+            {
+              text: "Revaluation",
+              activeicon: revaluation,
+              path: "Revaluation",
+              id: 7,
+            },
+          ]
+        : [
+            {
+              text: "Prospects",
+              activeicon: search,
+              path: "Prospects",
+              id: 5,
+            },
+          ]),
   ];
 
   // const menuItems = [
@@ -212,6 +215,9 @@ export default function Navbar({ children }) {
     } else if (role === "Approver" || role == "Risk Assessment") {
       // Approver cannot access these pages
       blockedRoutes = ["/Home", "/Vendors", "/RFQs", "/POs"];
+    } else if (role === "Reevaluation") {
+      // Approver cannot access these pages
+      blockedRoutes = ["/Home", "/Vendors", "/RFQs", "/POs", "/Prospects"];
     }
 
     if (blockedRoutes.includes(location.pathname)) {

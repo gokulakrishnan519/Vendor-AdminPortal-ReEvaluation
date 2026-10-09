@@ -148,11 +148,19 @@ export default function ParentReevaluation() {
   const [activeTab, setActiveTab] = useState("Registration Forms");
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [getTopData, setGetTopData] = useState(null);
+  const [riskLevelUpdate, setRiskLevelUpdate] = useState(false);
 
   const location = useLocation();
 
-  const { riskLevel, lastreevaluation, nextreevaluationdate, status } =
-    location.state || {};
+  const {
+    riskLevel,
+    lastreevaluation,
+    nextreevaluationdate,
+    status,
+    revaluation_id,
+    email,
+  } = location.state || {};
 
   console.log("Risk Level:", riskLevel);
   console.log("Last Reevaluation:", lastreevaluation);
@@ -160,13 +168,6 @@ export default function ParentReevaluation() {
   console.log("Status:", status);
 
   const navigate = useNavigate();
-
-  const steps = [
-    "Registration",
-    "Evaluation",
-    "Revalution Profile",
-    "Vendor Created",
-  ];
 
   const tabs = [
     {
@@ -366,6 +367,37 @@ export default function ParentReevaluation() {
     }
   };
 
+  const getHistoryList = async () => {
+    setLoading(true);
+
+    try {
+      const response = await axios.post(
+        "http://10.10.0.115:8095/vendor-reevaluation/risk-level/get",
+        {
+          reevaluation_id: revaluation_id,
+        },
+      );
+
+      const result = response.data?.data;
+
+      setGetTopData(response.data?.data.current_risk_level);
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Something went wrong";
+
+      sessionStorage.setItem("errormessge", errorMessage);
+      navigate("/ErrorHandling");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getHistoryList();
+  }, [riskLevelUpdate]);
+
   useEffect(() => {
     getProspectorData();
   }, []);
@@ -464,16 +496,38 @@ export default function ParentReevaluation() {
 
                   <Grid item>
                     <Typography>
+                      <b>Email</b>&nbsp;&nbsp; {email || "-"}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item>
+                    <Typography>
                       <b>Risk Level</b>&nbsp;&nbsp;{" "}
                       {riskLevel == null ? (
                         "-"
                       ) : (
                         <Chip
-                          label={riskLabels[riskLevel] || riskLevel || "-"}
+                          label={String(getTopData || "-")
+                            .toLowerCase()
+                            .replace(/\b\w/g, (char) => char.toUpperCase())}
                           size='small'
                           sx={{
-                            backgroundColor: riskColors[riskLevel]?.bg,
-                            color: riskColors[riskLevel]?.color,
+                            backgroundColor:
+                              riskColors[
+                                String(getTopData || "")
+                                  .toLowerCase()
+                                  .replace(/\b\w/g, (char) =>
+                                    char.toUpperCase(),
+                                  )
+                              ]?.bg,
+                            color:
+                              riskColors[
+                                String(getTopData || "")
+                                  .toLowerCase()
+                                  .replace(/\b\w/g, (char) =>
+                                    char.toUpperCase(),
+                                  )
+                              ]?.color,
                             ...chipStyle,
                           }}
                         />
@@ -623,13 +677,20 @@ export default function ParentReevaluation() {
                     ) : activeTab == "Documents" ? (
                       <Documents />
                     ) : activeTab == "Risk Assesment" ? (
-                      <RiskAssesment getProspectorData={getProspectorData} />
-                    ) : activeTab == "Revalution Profile" ? (
-                      <RevaluationProfile
+                      <RiskAssesment
                         getProspectorData={getProspectorData}
+                        revaluation_id={revaluation_id}
+                        email={email}
                       />
-                    ) : activeTab == "Review" ? (
-                      <Review getProspectorData={getProspectorData} />
+                    ) : activeTab == "Revalution Profile" ? (
+                      <>
+                        <RevaluationProfile
+                          getProspectorData={getProspectorData}
+                          revaluation_id={revaluation_id}
+                          setRiskLevelUpdate={setRiskLevelUpdate}
+                          riskLevelUpdate={riskLevelUpdate}
+                        />
+                      </>
                     ) : (
                       ""
                     )}
